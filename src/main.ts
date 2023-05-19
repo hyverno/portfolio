@@ -43,14 +43,14 @@ const elements: i_element[] = [
         link: "https://allo-maitre-dho.fr/",
     },
     {
-        src: "asynconf.jpeg",
+        src: "asynconf.webp",
         title: "Asynconf",
         date: "21.12.2021",
         desc: "The Asynconf is an event in which conferences are organized. Moreover it is accompanied by a development competition that I was able to organize, control and correct during the 3 days of the event on the first and second edition. In total there are almost 300 exercises corrected and classified in an order of points",
         link: "https://www.asynconf.fr/",
     },
     {
-        src: "gerstner.png",
+        src: "gerstner-wave.webp",
         title: "Gerstner wave",
         date: "10.01.2023",
         desc: "In this project I could experiment the GLSL with the gerstner wave. It allowed me to consolidate my knowledge on threejs and their approach to GLSL and shader in general.",
@@ -96,7 +96,7 @@ lastsUploads.forEach((element: i_element, index) => {
     
     projects.append(n)
     n.addEventListener("click", () => {
-        openModale(n)
+        openModale(parseInt(n.id), true)
     })
 
 })
@@ -124,8 +124,13 @@ const t_modale = (data: any) => `
 </div>
 `
 
-function openModale (e:HTMLDivElement) {
-    const data = elements[parseInt(e.id)]
+function openModale (id: number, lU: boolean) {
+    let data
+    if (lU) {
+        data = lastsUploads[id]
+    } else {
+        data = elements[id]
+    }
 
     document.body.insertAdjacentHTML('afterbegin', t_modale(data)) 
     const close = document.getElementById('close') as HTMLButtonElement
