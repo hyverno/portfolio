@@ -1,3 +1,168 @@
+<script lang="ts">
+	import {onMount} from 'svelte'
+	import stoetzel_sonorisation from '$lib/images/stoetzel-sonorisation.webp'
+	import Explore_Your_House from '$lib/images/Explore-Your-House.webp'
+	import Allo_Maitre_DHo from '$lib/images/Allo-Maitre-DHo.webp'
+	import asynconf from '$lib/images/asynconf.webp'
+	import gerstner_wave from '$lib/images/gerstner-wave.webp' 
+	import UnicityCoin from '$lib/images/UnicityCoin.webp'
+	import whook_org from '$lib/images/whook-org.webp'
+	
+	onMount(() => {
+
+		const projects = document.getElementById('projects') as HTMLDivElement
+		
+		const template = (src:string, title:string, date:string) => `
+			<div class="card over">
+				<img class="img" src="${src}" alt="preview image">
+				<div class="txt __row">
+					<h3>${title}</h3>
+					<p>${date}</p>
+				</div>
+			</div>
+		`
+		
+		interface i_element {
+			src: string,
+			title: string,
+			date: string,
+			desc: string,
+			link: string,
+		}
+		
+		const elements: i_element[] = [
+			{
+				src: stoetzel_sonorisation,
+				title: "stoetzel sonorisation",
+				date: "15.04.2023",
+				desc: "This is currently a site I am working on. It aims to make the 3D visualization of house and / or apartment through an import of a 3D model. The long term goal is to provide advanced features such as custom HDRI, 3D models already created or lighting configuration also realized. GLSL support is planned for the future.",
+				link: "https://www.stoetzel-sonorisation.com/",
+			},
+			{
+				src: Explore_Your_House,
+				title: "Explore Your House",
+				date: "24.12.2022",
+				desc: "This is currently a site I am working on. It aims to make the 3D visualization of house and / or apartment through an import of a 3D model. The long term goal is to provide advanced features such as custom HDRI, 3D models already created or lighting configuration also realized. GLSL support is planned for the future.",
+				link: "https://explore-your-house.vercel.app/",
+			},
+			{
+				src: Allo_Maitre_DHo,
+				title: "Allo Maitre d'Ho",
+				date: "12.08.2022",
+				desc: "In this project I was in charge of doing the front-end integration from an AdobeXD model. It allowed me to consolidate my learning on VueJS.",
+				link: "https://allo-maitre-dho.fr/",
+			},
+			{
+				src: asynconf,
+				title: "Asynconf",
+				date: "21.12.2021",
+				desc: "The Asynconf is an event in which conferences are organized. Moreover it is accompanied by a development competition that I was able to organize, control and correct during the 3 days of the event on the first and second edition. In total there are almost 300 exercises corrected and classified in an order of points",
+				link: "https://www.asynconf.fr/",
+			},
+			{
+				src: gerstner_wave,
+				title: "Gerstner wave",
+				date: "10.01.2023",
+				desc: "In this project I could experiment the GLSL with the gerstner wave. It allowed me to consolidate my knowledge on threejs and their approach to GLSL and shader in general.",
+				link: "https://gerstner-wave.vercel.app/",
+			},
+			{
+				src: UnicityCoin,
+				title: "UnicityCoin",
+				date: "26.05.2021",
+				desc: "This project is a graphical interface for a blockchain project. The goal is to display the wallet of the user and the last transaction made on the network. I have to realize the design and the logical practice",
+				link: "http://sthd.clepopiplay.com/",
+			},
+			{
+				src: whook_org,
+				title: "whook.org",
+				date: "4.11.2022",
+				desc: "In this project I made a content generator for webhook. It can be used for Discord or Guilded. In this project I realized the logical and graphic part",
+				link: "http://whook.org/",
+			},
+		]
+		
+		
+		function sortByDateDescending(elements: any[]): i_element[] {
+			return elements.sort((a, b) => {
+				const dateA: any = new Date(a.date.split('.').reverse().join('-'));
+				const dateB: any = new Date(b.date.split('.').reverse().join('-'));
+				return dateB - dateA;
+			});
+		}
+		
+		const lastsUploads = sortByDateDescending(elements).splice(0, 6)
+		
+		
+		lastsUploads.forEach((element: i_element, index) => {
+			const n = document.createElement("div")
+			n.id = index.toString()
+		
+			n.innerHTML += template(
+				element.src,
+				element.title,
+				element.date
+			)
+			
+			projects.append(n)
+			n.addEventListener("click", () => {
+				openModale(parseInt(n.id), true)
+			})
+		
+		})
+		
+		const t_modale = (data: any) => ` 
+		<div id="modale">
+			<div class="popup over">
+				<span>
+					<span class="__header">
+						<h2 class="__title">${data.title}</h2>
+						<div class="btns">
+							<button onclick="window.open('${data.link}')">view</button>
+							<button class="close" id="close">close</button>
+						</div>
+					</span>
+					<div class="__sep"></div>
+				</span>
+				<img src="${data.src}" alt="preview image">
+				<h3 class="__title__sec">Information</h3>
+				${data.desc}
+				<span class="__bottom">
+					<button onclick="window.open('${data.link}')">view</button>
+				</span>
+			</div>
+		</div>
+		`
+		
+		function openModale (id: number, lU: boolean) {
+			let data
+			if (lU) {
+				data = lastsUploads[id]
+			} else {
+				data = elements[id]
+			}
+		
+			document.body.insertAdjacentHTML('afterbegin', t_modale(data)) 
+			const close = document.getElementById('close') as HTMLButtonElement
+			close.addEventListener('click', removeModale)
+		}
+		
+		function removeModale () {
+			const doc = document.getElementById('modale') as HTMLButtonElement
+			const close = document.getElementById('close') as HTMLButtonElement
+			close.removeEventListener('click', removeModale)
+			doc.remove()
+		}
+		
+	})
+
+</script>
+
+<svelte:head>
+	<title>Home</title>
+	<meta name="description" content="Svelte demo app" />
+</svelte:head>
+
 <header>
     <h1 class="__title">Hyverno -- Creative WebDesigner</h1>
     <h2 class="__subtitle">Hi, I am a frontend developer specializing in creative design. I'm passionate about 3D rendering, script optimization and the video game world in general.</h2>
@@ -60,18 +225,6 @@
 <section class="center">
     <h2 class="__title__sec">Contact</h2>
 
-    <div itemscope itemtype='http://schema.org/Person' class='fiverr-seller-widget' style='display: inline-block;'>
-        <a itemprop='url' href=https://www.fiverr.com/hyverno rel="nofollow" target="_blank" style='display: inline-block;'>
-           <div class='fiverr-seller-content' id='fiverr-seller-widget-content-e9aeae9e-25be-4479-97de-2df0818b3e1c' itemprop='contentURL' style='display: none;'></div>
-           <div id='fiverr-widget-seller-data' style='display: none;'>
-               <div itemprop='name' >hyverno</div>
-               <div itemscope itemtype='http://schema.org/Organization'><span itemprop='name'>Fiverr</span></div>
-               <div itemprop='jobtitle'>Seller</div>
-               <div itemprop='description'>I am a French web developer. Passionate for 3 years in this field I am currently a student. In order to finance my studies and my digital tools I realize different projects to support myself.</div>
-           </div>
-       </a>
-   </div>
-
     <input type="checkbox" id="sp_btn">
     <label class="spoiler" for="sp_btn">
         <svg width="643" height="51" viewBox="0 0 643 51" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -83,6 +236,3 @@
 <footer class="center">
     <p>© 2023 Hyverno. Some rights reserved.</p>
 </footer>
-
-<script src="./src/pages/home.ts"></script>
-<script id='fiverr-seller-widget-script-e9aeae9e-25be-4479-97de-2df0818b3e1c' src='https://widgets.fiverr.com/api/v1/seller/hyverno?widget_id=e9aeae9e-25be-4479-97de-2df0818b3e1c' data-config='{"category_name":"\n                                    Programming \u0026 Tech\n\n                            "}' async='true' defer='true'></script>
