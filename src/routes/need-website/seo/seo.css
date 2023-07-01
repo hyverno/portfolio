@@ -32,6 +32,7 @@ header {
     align-items: center;
     justify-content: space-between;
     height: 80vh;
+    min-height: 800px;
     padding: 0 20%;
     width: calc(100% - 40%);
     background-color: #f8f8f8;
