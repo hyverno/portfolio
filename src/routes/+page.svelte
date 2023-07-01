@@ -1,4 +1,5 @@
 <script lang="ts">
+	import './home.css'
 	import {onMount} from 'svelte'
 	import stoetzel_sonorisation from '$lib/images/stoetzel-sonorisation.webp'
 	import Explore_Your_House from '$lib/images/Explore-Your-House.webp'

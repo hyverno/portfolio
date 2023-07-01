@@ -1,0 +1,359 @@
+nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 80px;
+    padding: 0 20%;
+    width: calc(100% - 40%);
+    background-color: #f8f8f8;
+}
+
+nav .icon {
+    width: 20%;
+    height: 100%;
+    background-color: #3c8859;
+}
+
+nav .contact {
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+nav .contact img {
+    height: 50px;
+}
+
+
+
+header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 80vh;
+    padding: 0 20%;
+    width: calc(100% - 40%);
+    background-color: #f8f8f8;
+}
+
+header div {
+    height: 70%;
+    display: flex;
+    flex-direction: column;
+    gap: 50px;
+}
+
+header img {
+    height: 100%;
+    width: 100%;
+}
+
+.btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-direction: row;
+}
+
+button {
+    background-color: #359756;
+    border-radius: 15px;
+    width: fit-content;
+    padding: 15px 40px;
+    color: #f8f8f8;
+    font-weight: bold;
+    font-size: 1.2rem;
+    transition: all 0.1s ease-in-out;
+    border: none;
+}
+
+button.sec {
+    background-color: #e6e6e6;
+    color: #359756;
+}
+
+button:hover {
+    background-color: #3f3f3f;
+    cursor: pointer;
+    color: #f8f8f8;
+}
+
+header .sub {
+    color: #6b6a6a;
+}
+
+.sep {
+    width: 100%;
+    height: 3px;
+    border-radius: 3px;
+    background: linear-gradient(to right, #359756, #3c885900 80%);
+}
+
+.title {
+    color: #359756;
+    font-size: 3.75rem;
+    font-weight: 700;
+    line-height: 65px;
+}
+
+h2.title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 40px;
+}
+
+
+.opt {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 50px;
+    padding: 100px 20%;
+    width: calc(100% - 40%);
+}
+
+.opt .cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+}
+
+.opt .card {
+    color: #f8f8f8;
+    background-color: #3f3f3f;
+    width: 47%;
+    padding: 20px 10px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+}
+.opt .card p{
+    color: #e6e6e6;
+}
+
+.opt .card .icon {
+    height: 80px;
+    width: 80px;
+    background-color: #359756;
+    border-radius: 10px;
+}
+
+.opt .card span {
+    width: 70%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: .8rem;
+}
+
+
+
+.arg {
+    background-color: #f8f8f8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 100px 20%;
+    width: calc(100% - 40%);
+}
+
+.arg img {
+    width: 40%;
+}
+
+.arg .txt {
+    width: 60%;
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.arg .txt span {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    color: #6b6b6a;
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.reviews {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 100px 20%;
+    width: calc(100% - 40%);
+}
+
+.element {
+    background-color: #f8f8f8;
+    border-radius: 15px;
+    width: 450px;
+    min-height: 150px;
+    padding: 10px 20px;
+}
+
+.element .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+}
+
+.element h5 {
+    color: #359756;
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+footer {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 20%;
+    width: calc(100% - 40%);
+    background-color: #3f3f3f;
+    color: #f8f8f8;
+}
+
+footer a {
+    color: #359756;
+}
+
+footer .logo {
+    width: 30%;
+    height: 50px;
+    background-color: #359756;
+    border-radius: 15px;
+}
+
+@media screen and (max-width: 1660px) {
+    nav {
+        padding: 0 10%;
+        width: calc(100% - 20%);
+    }
+
+    nav .icon {
+        width: 30%;
+    }
+
+    nav .contact img {
+        height: 40px;
+    }
+
+    header {
+        padding: 0 10%;
+        width: calc(100% - 20%);
+    }
+
+    header div {
+        height: 50%;
+    }
+
+    header img {
+        height: 100%;
+        width: 100%;
+    }
+
+    .btn {
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .btn button {
+        width: 100%;
+    }
+
+    .opt {
+        padding: 50px 10%;
+        width: calc(100% - 20%);
+    }
+
+    .opt .cards {
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .opt .card {
+        width: 100%;
+    }
+
+    .arg {
+        padding: 50px 10%;
+        width: calc(100% - 20%);
+    }
+
+    .arg .txt {
+        width: 100%;
+    }
+
+    .reviews {
+        padding: 50px 10%;
+        width: calc(100% - 20%);
+    }
+
+    .element {
+        width: 100%;
+    }
+
+    footer {
+        flex-direction: column;
+        gap: 20px;
+        padding: 20px 10%;
+        width: calc(100% - 20%);
+    }
+
+    footer .logo {
+        width: 100%;
+    }
+}
+
+@media screen and (max-width: 1150px) {
+    .title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        line-height: 40px;
+    }
+    header {
+        flex-direction:column-reverse;
+        padding: 20px 10%;
+    } 
+    .arg {
+        flex-direction:column;
+        padding: 50px 10%;
+    }
+    .reviews .element {
+        width: calc(100% - 40px);
+    }
+}
+
+@media screen and (max-width: 800px) {
+    h1.title {
+        font-size: 2rem;
+        font-weight: 700;
+        line-height: 40px;
+    }
+    h2 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        line-height: 40px;
+    }
+    h3 {
+        font-size: 1.2rem;
+        font-weight: 700;
+        line-height: 40px;
+    }
+    header {
+        justify-content: space-around;
+    }
+    header div {
+        height: fit-content;
+        gap: 10px;
+    }
+
+}
