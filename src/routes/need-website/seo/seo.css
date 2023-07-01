@@ -247,12 +247,13 @@ footer .logo {
     }
 
     header {
-        padding: 0 10%;
+        padding: 20px 10%;
         width: calc(100% - 20%);
     }
 
     header div {
         height: 50%;
+        gap: 20px;
     }
 
     header img {
@@ -313,26 +314,7 @@ footer .logo {
     }
 }
 
-@media screen and (max-width: 1150px) {
-    .title {
-        font-size: 2.5rem;
-        font-weight: 700;
-        line-height: 40px;
-    }
-    header {
-        flex-direction:column-reverse;
-        padding: 20px 10%;
-    } 
-    .arg {
-        flex-direction:column;
-        padding: 50px 10%;
-    }
-    .reviews .element {
-        width: calc(100% - 40px);
-    }
-}
-
-@media screen and (max-width: 800px) {
+@media screen and (max-width: 1100px) {
     h1.title {
         font-size: 2rem;
         font-weight: 700;
@@ -350,10 +332,20 @@ footer .logo {
     }
     header {
         justify-content: space-around;
+        flex-direction:column-reverse;
+        padding: 20px 10%;
     }
     header div {
         height: fit-content;
         gap: 10px;
+    }
+
+    .arg {
+        flex-direction:column;
+        padding: 50px 10%;
+    }
+    .reviews .element {
+        width: calc(100% - 40px);
     }
 
 }
