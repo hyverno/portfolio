@@ -33,7 +33,7 @@ header {
     justify-content: space-between;
     height: 80vh;
     min-height: 800px;
-    padding: 0 20%;
+    padding: 1rem 20%;
     width: calc(100% - 40%);
     background-color: #f8f8f8;
 }
@@ -248,7 +248,7 @@ footer .logo {
     }
 
     header {
-        padding: 20px 10%;
+        padding: 1rem 10%;
         width: calc(100% - 20%);
     }
 
@@ -334,7 +334,7 @@ footer .logo {
     header {
         justify-content: space-around;
         flex-direction:column-reverse;
-        padding: 20px 10%;
+        padding: 1rem 10%;
     }
     header div {
         height: fit-content;
