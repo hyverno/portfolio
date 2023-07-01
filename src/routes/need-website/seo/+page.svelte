@@ -4,6 +4,12 @@ import img_SEO from '$lib/images/Mobile-search.svg';
 import img_Trees from '$lib/images/avocado-tree.svg';
 import img_StarFill from '$lib/images/star-fill.svg';
 import img_Fiverr from '$lib/images/fiverr.svg';
+function redirect_offer() {
+    window.open("https://fr.fiverr.com/s2/240ba8aec2", "_blank");
+}
+function redirect_profil() {
+    window.open("https://www.fiverr.com/hyverno", "_blank");
+}
 </script>
 
 <nav>
@@ -26,8 +32,8 @@ import img_Fiverr from '$lib/images/fiverr.svg';
             bids and purchases are made <b><u>in a secure manner</u></b>
         </span>
         <div class="btn">
-            <button>buy the offer</button>
-            <button class="sec">look at the other offers</button>
+            <button on:click={redirect_offer}>buy the offer</button>
+            <button on:click={redirect_profil} class="sec">look at the other offers</button>
         </div>
     </div>
 
@@ -99,8 +105,8 @@ import img_Fiverr from '$lib/images/fiverr.svg';
             </p>
         </span>
         <div class="btn">
-            <button>buy the offer</button>
-            <button class="sec">look at the other offers</button>
+            <button on:click={redirect_offer}>buy the offer</button>
+            <button on:click={redirect_profil} class="sec">look at the other offers</button>
         </div>
     </div>    
 </section>
@@ -131,7 +137,7 @@ import img_Fiverr from '$lib/images/fiverr.svg';
 <footer>
     <div class="logo"></div>
     <p>
-        Fiverr link : <a href="fiverr.com/hyverno" target="_blank">fiverr.com/hyverno</a>
+        Fiverr link : <a href="https://www.fiverr.com/hyverno" target="_blank">fiverr.com/hyverno</a>
     </p>
     <span>© 2023 Hyverno. All rights reserved.</span>
 </footer>
