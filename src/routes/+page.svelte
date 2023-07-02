@@ -160,8 +160,19 @@
 </script>
 
 <svelte:head>
-	<title>Home</title>
-	<meta name="description" content="Svelte demo app" />
+	<title>
+		Hyverno - Creative WebDesigner - Portfolio
+	</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<meta name="description" content="my professional portfolio, you can discover my projects">
+	<meta name="keywords" content="portfolio, web, developer, frontend, creative, design, 3D, video game">
+	<meta name="author" content="Hyverno">
+	<meta name="robots" content="index, follow">
+	<meta name="language" content="English">
+	<meta name="generator" content="Visual Studio Code">
+	<meta name="revisit-after" content="1 days">
+	<meta property="og:title" content="Hyverno - Creative WebDesigner - Portfolio">
+	<meta property="og:description" content="my professional portfolio, you can discover my projects">
 </svelte:head>
 
 <header>

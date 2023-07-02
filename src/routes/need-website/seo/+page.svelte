@@ -12,6 +12,21 @@ function redirect_profil() {
 }
 </script>
 
+<svelte:head>
+    <title>
+        Hyverno - SEO optimisation and referencing of your web page
+    </title>
+	<meta name="description" content="Services specialising in web referencing and optimisation (SEO) for 3 years">
+    <meta name="keywords" content="SEO, web, referencing, optimisation, website, page, google, search, engine, optimise, optimised, optimisation, optimised, optimise">
+    <meta name="author" content="Hyverno">
+    <meta name="robots" content="index, follow">
+    <meta name="revisit-after" content="1 days">
+    <meta name="language" content="English">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Hyverno - SEO optimisation and referencing of your web page">
+    <meta property="og:description" content="Services specialising in web referencing and optimisation (SEO) for 3 years">
+</svelte:head>
+
 <nav>
     <div class="icon"></div>
 
