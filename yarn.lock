@@ -921,6 +921,11 @@ svelte@^4.0.0:
     magic-string "^0.30.0"
     periscopic "^3.1.0"
 
+sveltekit-sitemap@^1.0.21:
+  version "1.0.21"
+  resolved "https://registry.yarnpkg.com/sveltekit-sitemap/-/sveltekit-sitemap-1.0.21.tgz#8e77923e9d36c8b9dde34efbddc0364204cb695f"
+  integrity sha512-Pc8hJFqTdP9vvJfpHfzMm0oSoWVp2I/vOgReTT0lM//ZUCnfdPjAqTc/PA11CFITCCksKOrtun/o3F8ZvMAldA==
+
 to-regex-range@^5.0.1:
   version "5.0.1"
   resolved "https://registry.yarnpkg.com/to-regex-range/-/to-regex-range-5.0.1.tgz#1648c44aae7c8d988a326018ed72f5b4dd0392e4"
