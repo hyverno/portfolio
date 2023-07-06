@@ -9,9 +9,8 @@ nav {
 }
 
 nav .icon {
-    width: 20%;
-    height: 100%;
-    background-color: #3c8859;
+    width: fit-content;
+    height: 80%;
 }
 
 nav .contact {
@@ -139,7 +138,6 @@ h2.title {
 .opt .card .icon {
     height: 80px;
     width: 80px;
-    background-color: #359756;
     border-radius: 10px;
 }
 
@@ -215,8 +213,8 @@ footer {
     display: flex;
     gap: 20px;
     align-items: center;
-    justify-content: center;
-    padding: 20px 20%;
+    justify-content: space-around;
+    padding: 40px 20%;
     width: calc(100% - 40%);
     background-color: #3f3f3f;
     color: #f8f8f8;
@@ -226,11 +224,17 @@ footer a {
     color: #359756;
 }
 
-footer .logo {
-    width: 30%;
+footer span {
+    display: flex;
+    align-items: center;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+footer .icon {
+    width: fit-content;
     height: 50px;
-    background-color: #359756;
-    border-radius: 15px;
 }
 
 @media screen and (max-width: 1660px) {
@@ -347,6 +351,16 @@ footer .logo {
     }
     .reviews .element {
         width: calc(100% - 40px);
+    }
+
+    .opt .cards .card .icon {
+        padding: 10px;
+    }
+    .opt .cards .card span {
+        width: 80%;
+    }
+    .opt .cards .card {
+        flex-wrap: wrap;
     }
 
 }
