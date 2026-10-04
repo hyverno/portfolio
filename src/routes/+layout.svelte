@@ -74,8 +74,11 @@
 		if (FLAGS.crowd) {
 			try {
 				await nextFrame(); // three.js is fetched after first paint
+				performance.mark('hyv:engine-import');
 				const { initEngine } = await import('#lib/gl/engine');
+				performance.mark('hyv:engine-init');
 				engine = await initEngine(canvas);
+				performance.mark('hyv:engine-ready');
 			} catch (err) {
 				// Any engine failure means the static build, never a blank page.
 				console.warn('[engine] init failed, using the static build', err);
@@ -85,8 +88,10 @@
 		setEngine(engine);
 		if (engine) {
 			device.webgl = 'ok';
-			// Dev hook for scripts/shot.mjs and scripts/tour.mjs (owner, blend, alpha diagnostics).
-			if (import.meta.env.DEV) (window as unknown as { __hyv?: { engine: Engine } }).__hyv = { engine };
+			// Diagnostics hook (scripts/shot.mjs, scripts/tour.mjs, or `?debug` on a deployed build):
+			// the engine (owner, blend, alpha) and the boot log with its real timings.
+			if (import.meta.env.DEV || new URLSearchParams(location.search).has('debug'))
+				(window as unknown as { __hyv?: { engine: Engine; boot: typeof boot } }).__hyv = { engine, boot };
 			return;
 		}
 		markNoWebGL();

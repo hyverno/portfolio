@@ -182,13 +182,14 @@
 		const timer = setInterval(() => {
 			try {
 				const now = performance.now();
-				if (shownCount < boot.log.length && now - lastLine >= LINE_GAP_MS) {
-					shownCount++;
-					lastLine = now;
-				}
-
 				const noGL = device.webgl === 'none';
 				const ready = boot.progress >= 1;
+				// Lines print at a readable pace while the engine works; once it is ready the rest of
+				// the log races through (3 lines a tick): the log never holds the site back.
+				if (shownCount < boot.log.length && (ready || now - lastLine >= LINE_GAP_MS)) {
+					shownCount = Math.min(boot.log.length, shownCount + (ready ? 3 : 1));
+					lastLine = now;
+				}
 				// Close the log once: the one joke, then READY (the static build ends on its own line).
 				if (ready && !closing && !noGL) {
 					closing = true;

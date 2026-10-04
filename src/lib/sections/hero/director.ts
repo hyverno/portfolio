@@ -77,6 +77,7 @@ export class HeroDirector {
 
 	/** Both hero formations are baked. */
 	ready(): void {
+		performance.mark('hyv:hero-baked');
 		this.baked = true;
 		this.sync();
 	}
@@ -151,6 +152,7 @@ export class HeroDirector {
 		const s = this.crowd?.blendState;
 		this.landFrom = this.gaveUp && s ? (s.mix >= 0.5 ? s.to : s.from) : 'spawn';
 		this.land.v = 0;
+		performance.mark('hyv:hero-land');
 		this.landing = gsap.to(this.land, {
 			v: 1,
 			duration: LAND_S,

@@ -56,6 +56,7 @@ export function whenBooted(): Promise<void> {
 export function finishBoot(): void {
 	if (boot.done) return;
 	boot.done = true;
+	performance.mark('hyv:booted');
 	writeStore(SESSION_KEY, '1', 'session');
 	resolveBooted();
 }
