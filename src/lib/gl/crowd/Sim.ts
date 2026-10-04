@@ -14,13 +14,40 @@ import { mulberry32 } from './bakers';
 
 export type Uniforms = Record<string, THREE.IUniform>;
 
+/**
+ * A program to compile ahead of the first frame. three keys programs on (among others) the
+ * geometry's attributes and whether a render target is bound, so the warm-up must draw each
+ * material exactly as the frame will: `quad` = GPUComputationRenderer's full-screen triangle
+ * (position + uv, no normals), `offscreen` = drawn into a render target (linear output).
+ */
+export interface CompileJob {
+	name: string;
+	material: THREE.Material;
+	kind: 'quad' | 'points';
+	offscreen: boolean;
+}
+
 /** One ping-ponged state texture. */
 class Pair {
 	a: THREE.WebGLRenderTarget;
 	b: THREE.WebGLRenderTarget;
 	constructor(gpu: GPUComputationRenderer, size: number) {
-		this.a = gpu.createRenderTarget(size, size, THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping, THREE.NearestFilter, THREE.NearestFilter);
-		this.b = gpu.createRenderTarget(size, size, THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping, THREE.NearestFilter, THREE.NearestFilter);
+		this.a = gpu.createRenderTarget(
+			size,
+			size,
+			THREE.ClampToEdgeWrapping,
+			THREE.ClampToEdgeWrapping,
+			THREE.NearestFilter,
+			THREE.NearestFilter
+		);
+		this.b = gpu.createRenderTarget(
+			size,
+			size,
+			THREE.ClampToEdgeWrapping,
+			THREE.ClampToEdgeWrapping,
+			THREE.NearestFilter,
+			THREE.NearestFilter
+		);
 	}
 	get read() {
 		return this.a;
@@ -53,7 +80,11 @@ export class Sim {
 	readonly pos: Pair;
 	readonly vel: Pair;
 	readonly target: THREE.WebGLRenderTarget;
-	readonly materials: { target: THREE.ShaderMaterial; velocity: THREE.ShaderMaterial; position: THREE.ShaderMaterial };
+	readonly materials: {
+		target: THREE.ShaderMaterial;
+		velocity: THREE.ShaderMaterial;
+		position: THREE.ShaderMaterial;
+	};
 	/** Shared by the crowd points, the density splats and the selection count (all N vertices). */
 	readonly geometry: THREE.BufferGeometry;
 	readonly points: THREE.Points;
@@ -76,7 +107,14 @@ export class Sim {
 		this.gpu.setDataType(floatType);
 		this.pos = new Pair(this.gpu, size);
 		this.vel = new Pair(this.gpu, size);
-		this.target = this.gpu.createRenderTarget(size, size, THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping, THREE.NearestFilter, THREE.NearestFilter);
+		this.target = this.gpu.createRenderTarget(
+			size,
+			size,
+			THREE.ClampToEdgeWrapping,
+			THREE.ClampToEdgeWrapping,
+			THREE.NearestFilter,
+			THREE.NearestFilter
+		);
 		this.materials = {
 			target: this.gpu.createShaderMaterial(TARGET_FRAG, U),
 			velocity: this.gpu.createShaderMaterial(VELOCITY_FRAG, U),
@@ -132,8 +170,20 @@ export class Sim {
 			blendSrcAlpha: THREE.OneFactor,
 			blendDstAlpha: THREE.OneFactor
 		} as const;
-		this.densityMaterial = new THREE.ShaderMaterial({ name: 'crowd.density', vertexShader: DENSITY_VERT, fragmentShader: DENSITY_FRAG, uniforms: U, ...additive });
-		this.countMaterial = new THREE.ShaderMaterial({ name: 'crowd.count', vertexShader: COUNT_VERT, fragmentShader: COUNT_FRAG, uniforms: U, ...additive });
+		this.densityMaterial = new THREE.ShaderMaterial({
+			name: 'crowd.density',
+			vertexShader: DENSITY_VERT,
+			fragmentShader: DENSITY_FRAG,
+			uniforms: U,
+			...additive
+		});
+		this.countMaterial = new THREE.ShaderMaterial({
+			name: 'crowd.count',
+			vertexShader: COUNT_VERT,
+			fragmentShader: COUNT_FRAG,
+			uniforms: U,
+			...additive
+		});
 
 		const mk = (m: THREE.ShaderMaterial) => {
 			const p = new THREE.Points(this.geometry, m);
@@ -188,14 +238,14 @@ export class Sim {
 	}
 
 	/** Every material this sim compiles, with the object type it is drawn as (for compileAsync). */
-	programs(): { name: string; material: THREE.ShaderMaterial; kind: 'quad' | 'points' }[] {
+	programs(): CompileJob[] {
 		return [
-			{ name: 'crowd.target.frag', material: this.materials.target, kind: 'quad' },
-			{ name: 'crowd.vel.frag', material: this.materials.velocity, kind: 'quad' },
-			{ name: 'crowd.pos.frag', material: this.materials.position, kind: 'quad' },
-			{ name: 'crowd.density', material: this.densityMaterial, kind: 'points' },
-			{ name: 'crowd.points', material: this.renderMaterial, kind: 'points' },
-			{ name: 'crowd.count', material: this.countMaterial, kind: 'points' }
+			{ name: 'crowd.target.frag', material: this.materials.target, kind: 'quad', offscreen: true },
+			{ name: 'crowd.vel.frag', material: this.materials.velocity, kind: 'quad', offscreen: true },
+			{ name: 'crowd.pos.frag', material: this.materials.position, kind: 'quad', offscreen: true },
+			{ name: 'crowd.density', material: this.densityMaterial, kind: 'points', offscreen: true },
+			{ name: 'crowd.points', material: this.renderMaterial, kind: 'points', offscreen: false },
+			{ name: 'crowd.count', material: this.countMaterial, kind: 'points', offscreen: true }
 		];
 	}
 

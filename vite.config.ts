@@ -17,6 +17,13 @@ export default defineConfig({
 			}
 		})
 	],
+	resolve: {
+		// On Windows the project may sit behind a redirected folder (an MSIX app's AppData/Roaming is
+		// virtualised into AppData/Local/Packages/<app>/LocalCache). Resolving ids through realpath
+		// then puts every file outside Vite's serving allow list (403s, no hydration), so keep the
+		// paths as configured.
+		preserveSymlinks: true
+	},
 	build: {
 		// three.js and the GL modules are split out and imported after first paint.
 		chunkSizeWarningLimit: 800

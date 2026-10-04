@@ -13,19 +13,22 @@
 		const html = document.documentElement;
 		html.classList.add('focus-brackets');
 
+		// Focus events also fire synchronously while Svelte removes a focused node mid-update, where
+		// writing state is forbidden: every write is deferred to a microtask.
+		const set = (el: HTMLElement | null) => queueMicrotask(() => void (target = el));
+
 		const onFocusIn = (e: FocusEvent) => {
 			const el = e.target;
 			// Programmatic targets (`tabindex="-1"`, e.g. <main> after the skip link) get no ring.
-			target =
-				el instanceof HTMLElement && el.tabIndex >= 0 && el.matches(':focus-visible') ? el : null;
+			set(
+				el instanceof HTMLElement && el.tabIndex >= 0 && el.matches(':focus-visible') ? el : null
+			);
 		};
 		const onFocusOut = (e: FocusEvent) => {
 			// Focus leaving the page (or to nothing) clears the ring; focusin on the next element replaces it.
-			if (!e.relatedTarget) target = null;
+			if (!e.relatedTarget) set(null);
 		};
-		const onPointerDown = () => {
-			target = null;
-		};
+		const onPointerDown = () => set(null);
 
 		document.addEventListener('focusin', onFocusIn);
 		document.addEventListener('focusout', onFocusOut);

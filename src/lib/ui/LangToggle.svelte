@@ -20,7 +20,7 @@
 	}
 </script>
 
-<a class="lang hud-text" class:pill {href} hreflang={other} data-sveltekit-noscroll {onclick}>
+<a class="lang hud-text" class:pill {href} hreflang={other} {onclick}>
 	<span class:on={i18n.lang === 'en'}>EN</span><span class="slash" aria-hidden="true">/</span><span
 		class:on={i18n.lang === 'fr'}>FR</span
 	><span class="visually-hidden" lang={other}>{t().hud.lang.switch}</span>

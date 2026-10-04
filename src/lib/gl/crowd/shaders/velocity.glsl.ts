@@ -82,12 +82,52 @@ void main() {
 	float w = tgt.z;
 	vec2 d = tgt.xy - pos.xy;
 	float dist = length(d);
+	// 1 = a held entity standing on its slot. Slots are already evenly spaced, so a settled
+	// formation needs neither personal space nor wander: that is what keeps type crisp at rest.
+	float onSlot = 1.0 - smoothstep(0.006, 0.06, dist);
+	float settled = w * onSlot;
+
+	// ── DOM obstacles ───────────────────────────────────────────────────────────────────────
+	// Rounded-box SDF push inside a ~0.04u margin. A held entity whose slot is inside the box is
+	// exempt (a formation drawn on the copy keeps its shape); a roamer whose home is inside it
+	// loses its leash instead. Inside the margin, steering into the box is turned sideways (see
+	// below), so the crowd slides around the copy like water round a stone instead of queuing
+	// against it.
+	vec2 ext = vec2(0.0);
+	bool homeBlocked = false;
+	float contact = 0.0;
+	vec2 contactN = vec2(0.0);
+	// Each entity keeps its own clearance (0.022–0.058u), so the copy gets a soft margin, not a fence.
+	float margin = 0.04 * mix(0.55, 1.45, hash11(id * 1.37 + 0.11));
+	for (int i = 0; i < 16; i++) {
+		if (i >= uObstacleCount) break;
+		vec4 o = uObstacles[i];
+		bool homeIn = sdRoundBox(tgt.xy - o.xy, o.zw, 0.02) < margin;
+		homeBlocked = homeBlocked || homeIn;
+		vec2 q = pos.xy - o.xy;
+		float sd = sdRoundBox(q, o.zw, 0.02);
+		if (sd > margin || (homeIn && w > 0.05)) continue;
+		vec2 e = vec2(0.002, 0.0);
+		vec2 g = vec2(sdRoundBox(q + e.xy, o.zw, 0.02) - sdRoundBox(q - e.xy, o.zw, 0.02),
+			sdRoundBox(q + e.yx, o.zw, 0.02) - sdRoundBox(q - e.yx, o.zw, 0.02));
+		float gl = length(g);
+		vec2 n = gl > 1e-6 ? g / gl : vec2(0.0, 1.0);
+		float k = clamp(1.0 - sd / margin, 0.0, 3.0);
+		ext += n * k * k * uObstacleF;
+		if (k > contact) {
+			contact = k;
+			contactN = n;
+		}
+	}
 
 	// ── steering ────────────────────────────────────────────────────────────────────────────
+	// Individuals: ±22% top speed, so a moving formation stretches into a stream (the fast ones
+	// lead) instead of sliding across the screen as one rigid picture.
+	float maxSpeed = uMaxSpeed * (0.78 + 0.44 * hash11(id * 0.618 + 3.7));
 	// Free roamers (weight 0) are leashed loosely to their home so they mill instead of drifting off.
-	float leash = (1.0 - w) * 0.3 * smoothstep(0.08, 0.45, dist);
+	float leash = homeBlocked ? 0.0 : (1.0 - w) * 0.3 * smoothstep(0.08, 0.45, dist);
 	float we = max(w, leash);
-	vec2 desired = dist > 1e-5 ? d / dist * uMaxSpeed * min(1.0, dist / uArrive) : vec2(0.0);
+	vec2 desired = dist > 1e-5 ? d / dist * maxSpeed * min(1.0, dist / uArrive) : vec2(0.0);
 	vec2 steer = (desired - v) * uSeek * we;
 
 	// Separation: down the density gradient (central differences in the density RT).
@@ -96,13 +136,14 @@ void main() {
 		vec2 tx = vec2(uDensityTexel.x, 0.0);
 		vec2 ty = vec2(0.0, uDensityTexel.y);
 		vec2 grad = vec2(density(duv + tx) - density(duv - tx), density(duv + ty) - density(duv - ty));
-		// Held entities only keep a little personal space so type stays crisp.
-		steer -= grad * uSep * mix(1.0, 0.3, w);
+		steer -= grad * uSep * mix(1.0, 0.35, w) * (1.0 - 0.92 * settled);
 	}
 
 	// Curl wander: one shared divergence-free field, so neighbours drift together like a flock.
+	// ×4 for roamers, ×2 for held entities in transit (streams meander), ×0.5 once settled.
 	vec2 c = curl2D(pos.xy * uNoiseScale + vec2(h * 0.35, 0.0), uTime * 0.12);
-	steer += c * uWander * mix(4.0, 1.0, w) * (1.0 + 3.0 * uPanic);
+	float wanderK = mix(4.0, mix(2.0, 0.5, onSlot), w);
+	steer += c * uWander * wanderK * (1.0 + 3.0 * uPanic);
 
 	// Panic: flee the formation centre.
 	if (uPanic > 0.0) {
@@ -112,38 +153,32 @@ void main() {
 	}
 
 	vec2 force = clampLen(steer, uMaxForce);
+	if (contact > 0.0) {
+		// Redirect, do not just cancel: the part of the steering that points into the box turns
+		// sideways (whichever way the entity already leans), so a crowd heading through the copy
+		// splits and pours round its corners.
+		float into = dot(force, contactN);
+		if (into < 0.0) {
+			vec2 tng = vec2(-contactN.y, contactN.x);
+			float along = dot(force, tng);
+			float side = abs(along) > 1e-3 ? sign(along) : (h > 0.5 ? 1.0 : -1.0);
+			force += (contactN + tng * side) * (-into) * min(1.0, contact * 3.0);
+		}
+	}
 
-	// ── contact forces ──────────────────────────────────────────────────────────────────────
-	vec2 ext = vec2(0.0);
-
-	// Cursor: radial push plus a tangential flow-around term, so the crowd parts like water.
+	// ── contact forces (obstacles above) ────────────────────────────────────────────────────
+	// Cursor: radial push plus a tangential flow-around term, so the crowd parts like water. A
+	// resting cursor only keeps a small clearing; a moving one carves the full radius.
 	vec2 r = pos.xy - uMouse;
 	float dm = length(r);
-	if (dm < uMouseR && dm > 1e-5) {
+	float mouseR = uMouseR * mix(0.4, 1.0, smoothstep(0.05, 0.9, length(uMouseVel)));
+	if (dm < mouseR && dm > 1e-5) {
 		vec2 n = r / dm;
-		float k = 1.0 - dm / uMouseR;
+		float k = 1.0 - dm / mouseR;
 		k *= k;
 		vec2 tng = vec2(-n.y, n.x);
 		float side = sign(dot(tng, v - uMouseVel) + (h - 0.5) * 0.02);
 		ext += (n + tng * side * 0.6) * k * uMouseF;
-	}
-
-	// DOM obstacles: rounded-box SDF push inside a 0.04u margin, unless this entity's destination
-	// is inside that box (a formation drawn on the copy keeps its shape).
-	for (int i = 0; i < 16; i++) {
-		if (i >= uObstacleCount) break;
-		vec4 o = uObstacles[i];
-		vec2 q = pos.xy - o.xy;
-		float sd = sdRoundBox(q, o.zw, 0.02);
-		if (sd > 0.04) continue;
-		if (w > 0.05 && sdRoundBox(tgt.xy - o.xy, o.zw, 0.02) < 0.04) continue;
-		vec2 e = vec2(0.002, 0.0);
-		vec2 g = vec2(sdRoundBox(q + e.xy, o.zw, 0.02) - sdRoundBox(q - e.xy, o.zw, 0.02),
-			sdRoundBox(q + e.yx, o.zw, 0.02) - sdRoundBox(q - e.yx, o.zw, 0.02));
-		float gl = length(g);
-		vec2 n = gl > 1e-6 ? g / gl : vec2(0.0, 1.0);
-		float k = clamp(1.0 - sd / 0.04, 0.0, 3.0);
-		ext += n * k * k * uObstacleF;
 	}
 
 	// Ping ring: an outward shove while the expanding ring passes through.
@@ -153,7 +188,8 @@ void main() {
 		vec2 q = pos.xy - p.xy;
 		float dq = length(q);
 		float band = 1.0 - abs(dq - 1.4 * p.z) / 0.06;
-		if (band > 0.0 && dq > 1e-4) ext += q / dq * band * p.w * uPingF * exp(-p.z * 1.5);
+		// Strongest near the click; spent by ~0.6u so a ping shoves, it does not wipe the page.
+		if (band > 0.0 && dq > 1e-4) ext += q / dq * band * p.w * uPingF * exp(-p.z * 2.6);
 	}
 
 	force += clampLen(ext, uMaxForce * 6.0);
@@ -163,8 +199,8 @@ void main() {
 	v *= exp(-2.2 * uDt);
 	// Soft speed limit: impulses may overshoot briefly, then bleed back to uMaxSpeed.
 	float sp = length(v);
-	if (sp > uMaxSpeed) v *= mix(1.0, uMaxSpeed / sp, 1.0 - exp(-8.0 * uDt));
-	v = clampLen(v, uMaxSpeed * 3.0);
+	if (sp > maxSpeed) v *= mix(1.0, maxSpeed / sp, 1.0 - exp(-8.0 * uDt));
+	v = clampLen(v, maxSpeed * 3.0);
 
 	gl_FragColor = vec4(v, length(v), min(age + uDt, 100.0));
 }

@@ -82,23 +82,39 @@
 		});
 	});
 
-	// Stage label decodes on change (§3.3).
+	// Stage label decodes on change (§3.3); the first label is simply there.
+	let shownStage = '';
 	$effect(() => {
 		const text = stage;
-		if (!stageEl) return;
-		if (!mounted || device.reducedMotion) stageEl.textContent = text;
+		if (!stageEl || !mounted || text === shownStage) return;
+		const first = shownStage === '';
+		shownStage = text;
+		if (first || device.reducedMotion) stageEl.textContent = text;
 		else decode(stageEl, text);
 	});
 
 	let exiting = false;
+
+	/**
+	 * Waits for an exit animation, but never longer than its own length plus a margin: tweens run on
+	 * rAF, which stops in a background tab, and the preloader must never outlive the boot.
+	 */
+	function settle(anim: gsap.core.Animation): Promise<void> {
+		const ms = anim.totalDuration() * 1000 + 250;
+		return Promise.race([
+			new Promise<void>((r) => void anim.eventCallback('onComplete', () => r())),
+			new Promise<void>((r) => setTimeout(r, ms))
+		]);
+	}
 
 	async function exit(fast = false) {
 		if (exiting) return;
 		exiting = true;
 		const handed: string[] = [];
 		try {
+			if (document.hidden) return;
 			if (device.reducedMotion || fast) {
-				await gsap.to([rootEl, backdrop], { autoAlpha: 0, duration: 0.2, ease: 'none' });
+				await settle(gsap.to([rootEl, backdrop], { autoAlpha: 0, duration: 0.2, ease: 'none' }));
 				return;
 			}
 			const k = boot.short ? 0.5 : 1;
@@ -139,7 +155,7 @@
 			});
 
 			tl.to(backdrop!, { autoAlpha: 0, duration: DUR.base * k, ease: EASE.arrive }, 0.18 * k);
-			await tl;
+			await settle(tl);
 		} catch {
 			/* never trap the visitor behind the preloader */
 		} finally {
@@ -362,6 +378,15 @@
 		white-space: nowrap;
 	}
 
+	/* Paper plates (as in the HUD): the spawn wave streams right under the labels. */
+	.callout,
+	.log li,
+	.stage,
+	.counter {
+		background: var(--paper);
+		box-shadow: 0 0 0 3px var(--paper);
+	}
+
 	.callout:first-child {
 		color: var(--ink);
 	}
@@ -375,6 +400,7 @@
 		left: 18px;
 		bottom: 16px;
 		display: grid;
+		justify-items: start;
 		gap: 3px;
 		margin: 0;
 		padding: 0;

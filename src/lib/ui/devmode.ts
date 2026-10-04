@@ -67,15 +67,20 @@ async function formCrowd() {
 		delay(DEFINE_TIMEOUT_MS)
 	]);
 	if (!crowd.has(FORMATION)) return;
+	// The engine exposes its dominant formation as `current` (not part of the §9.1 contract).
+	const current = (crowd as { current?: unknown }).current;
+	const from = typeof current === 'string' && current !== FORMATION ? current : 'ambient';
 	crowd.claim(OWNER);
 	try {
 		const s = { m: 0 };
-		const apply = () => crowd.blend('ambient', FORMATION, s.m, { owner: OWNER });
+		const apply = () => crowd.blend(from, FORMATION, s.m, { owner: OWNER });
 		if (device.reducedMotion) {
 			s.m = 1;
 			apply();
 		} else {
-			await gsap.to(s, { m: 1, duration: DUR.morph, ease: EASE.arrive, onUpdate: apply });
+			const tw = gsap.to(s, { m: 1, duration: DUR.morph, ease: EASE.arrive, onUpdate: apply });
+			// rAF stops in background tabs: never let the claim outlive the payoff.
+			await Promise.race([tw.then(() => {}), delay(DUR.morph * 1000 + 300)]);
 		}
 		await delay(HOLD_MS);
 	} finally {

@@ -40,7 +40,9 @@ let dirty = false;
 const last = { from: '', to: '', mix: -1 };
 
 function sortAnchors() {
-	anchors.sort((a, b) => (a.node.compareDocumentPosition(b.node) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
+	anchors.sort((a, b) =>
+		a.node.compareDocumentPosition(b.node) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1
+	);
 }
 
 function fromOf(i: number): string {
@@ -97,7 +99,10 @@ function removeAnchor(a: Anchor) {
 	markDirty();
 }
 
-export function formation(node: HTMLElement, params: FormationParams): ActionReturn<FormationParams> {
+export function formation(
+	node: HTMLElement,
+	params: FormationParams
+): ActionReturn<FormationParams> {
 	let o = params;
 	let generation = 0;
 	let anchor: Anchor | null = null;
@@ -110,7 +115,12 @@ export function formation(node: HTMLElement, params: FormationParams): ActionRet
 		if (!engine || mine !== generation) return;
 		const c = engine.crowd as CrowdWithRelease;
 		bindCrowd(c);
-		void c.define(o.id, o.source, { el: o.region ?? node, space: o.space ?? 'page' }, { preset: o.preset, glyph: o.glyph });
+		void c.define(
+			o.id,
+			o.source,
+			{ el: o.region ?? node, space: o.space ?? 'page' },
+			{ preset: o.preset, glyph: o.glyph }
+		);
 
 		const a: Anchor = { node, o, p: 0 };
 		anchor = a;

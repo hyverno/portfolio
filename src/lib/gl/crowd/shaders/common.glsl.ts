@@ -13,9 +13,13 @@ float entityId(vec2 fragCoord) {
 	return floor(fragCoord.y) * uSimSize + floor(fragCoord.x);
 }
 
-float entityMix(float id) {
+float entityMixAt(float id, float globalMix) {
 	float s = mix(hash11(id * 0.7548776 + 0.31), id / uCount, 0.6);
 	float lo = s * uMixSpread;
-	return smoothstep(lo, lo + 1.0 - uMixSpread, uMix);
+	return smoothstep(lo, lo + 1.0 - uMixSpread, globalMix);
+}
+
+float entityMix(float id) {
+	return entityMixAt(id, uMix);
 }
 `;

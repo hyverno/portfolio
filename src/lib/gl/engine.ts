@@ -10,7 +10,7 @@ import { Regions } from './crowd/regions';
 import { createViews } from './views';
 import { createSelection } from './select';
 import { initInput } from './input';
-import { setEngine } from './handle';
+import { getEngine, setEngine } from './handle';
 import { createDamageNumbers } from './numbers/DamageNumbers';
 import { createViewModes } from './viewmodes';
 import { createInkSwarm } from './inkswarm';
@@ -18,7 +18,14 @@ import type { CrowdGPU, Effect } from './internal';
 import type { DamageNumbers, Engine, GLView, ViewMode } from './types';
 import { PRIORITY, onFrame } from '#lib/core/ticker';
 import { scroll } from '#lib/core/scroll.svelte';
-import { TIER, device, markNoWebGL, onReducedMotionChange, setTier as setCoreTier, type Tier } from '#lib/core/device.svelte';
+import {
+	TIER,
+	device,
+	markNoWebGL,
+	onReducedMotionChange,
+	setTier as setCoreTier,
+	type Tier
+} from '#lib/core/device.svelte';
 import { onGovernor, stats } from '#lib/core/stats.svelte';
 import { boot, log, report, whenBooted } from '#lib/core/boot.svelte';
 import { onThemeColors } from '#lib/core/theme.svelte';
@@ -47,7 +54,16 @@ function guard<T>(name: string, build: () => T, fallback: () => T): T {
 }
 
 function noopNumbers(): NumbersFx {
-	return { spawn() {}, burst() {}, live: 0, total: 0, capacity: 0, object: null, render() {}, dispose() {} };
+	return {
+		spawn() {},
+		burst() {},
+		live: 0,
+		total: 0,
+		capacity: 0,
+		object: null,
+		render() {},
+		dispose() {}
+	};
 }
 
 export async function initEngine(canvas: HTMLCanvasElement): Promise<Engine | null> {
@@ -73,7 +89,11 @@ export async function initEngine(canvas: HTMLCanvasElement): Promise<Engine | nu
 	const L = t().boot.log;
 	device.floatRT = caps.floatType === THREE.FloatType ? 'float' : 'half';
 	log(L.webgl(String(caps.maxTex), String(+handle.size.dpr.toFixed(2))));
-	log(L.floatRT(`${caps.floatType === THREE.FloatType ? 'FLOAT32' : 'HALF16'} · DENSITY ${caps.mipmaps ? 'HALF16 MIPS' : 'RGBA8'}`));
+	log(
+		L.floatRT(
+			`${caps.floatType === THREE.FloatType ? 'FLOAT32' : 'HALF16'} · DENSITY ${caps.mipmaps ? 'HALF16 MIPS' : 'RGBA8'}`
+		)
+	);
 
 	let tier: Tier = device.tier;
 	const spec = TIER[tier];
@@ -117,14 +137,21 @@ export async function initEngine(canvas: HTMLCanvasElement): Promise<Engine | nu
 	const programs = crowd.programs();
 	const compileScene = new THREE.Scene();
 	const compileCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-	const quad = new THREE.PlaneGeometry(2, 2);
+	// Same attribute set as GPUComputationRenderer's full-screen triangle (no normals), or three
+	// would key a second program variant and compile it again on the first frame.
+	const quad = new THREE.BufferGeometry();
+	quad.setAttribute('position', new THREE.Float32BufferAttribute([-1, 3, 0, -1, -1, 0, 3, -1, 0], 3));
+	quad.setAttribute('uv', new THREE.Float32BufferAttribute([0, 2, 0, 0, 2, 0], 2));
 	for (let i = 0; i < programs.length; i++) {
-		const { name, material, kind } = programs[i];
-		const obj = kind === 'quad' ? new THREE.Mesh(quad, material) : new THREE.Points(crowd.sim!.geometry, material);
+		const { name, material, kind, offscreen } = programs[i];
+		const obj =
+			kind === 'quad'
+				? new THREE.Mesh(quad, material)
+				: new THREE.Points(crowd.sim!.geometry, material);
 		obj.frustumCulled = false;
 		compileScene.add(obj);
-		// GPGPU passes render into float targets: compile with the same output encoding.
-		renderer.setRenderTarget(kind === 'quad' ? crowd.sim!.target : null);
+		// Offscreen passes write linear values: compile with a render target bound, like the frame.
+		renderer.setRenderTarget(offscreen ? crowd.sim!.target : null);
 		const t0 = performance.now();
 		try {
 			await renderer.compileAsync(compileScene, compileCam);
@@ -188,7 +215,13 @@ export async function initEngine(canvas: HTMLCanvasElement): Promise<Engine | nu
 	const ink = guard<InkFx>(
 		'ink swarm',
 		() => createInkSwarm(renderer, gpu, crowd),
-		() => ({ cover: () => Promise.resolve(), reveal: () => Promise.resolve(), active: false, render() {}, dispose() {} })
+		() => ({
+			cover: () => Promise.resolve(),
+			reveal: () => Promise.resolve(),
+			active: false,
+			render() {},
+			dispose() {}
+		})
 	);
 	const extraNumbers = new Set<NumbersFx>();
 	const effects: Effect[] = [viewModes, numbers, ink];
@@ -233,7 +266,12 @@ export async function initEngine(canvas: HTMLCanvasElement): Promise<Engine | nu
 			const s = crowd.blendState;
 			if (disposed || crowd.owner !== null || s.from !== 'spawn' || s.to !== 'spawn') return;
 			const m = { v: 0 };
-			gsap.to(m, { v: 1, duration: 1.4, ease: 'arrive', onUpdate: () => crowd.blend('spawn', 'ambient', m.v) });
+			gsap.to(m, {
+				v: 1,
+				duration: 1.4,
+				ease: 'arrive',
+				onUpdate: () => crowd.blend('spawn', 'ambient', m.v)
+			});
 		});
 	});
 
@@ -251,7 +289,18 @@ export async function initEngine(canvas: HTMLCanvasElement): Promise<Engine | nu
 	}, PRIORITY.sim);
 
 	const offRender = onFrame((time, dt) => {
-		if (paused || disposed || lost) return;
+		if (disposed) return;
+		// The layout was re-mounted (HMR, error boundary): this engine's canvas is gone for good.
+		if (!canvas.isConnected) {
+			try {
+				renderer.forceContextLoss(); // free the context now rather than at GC
+			} catch {
+				// already gone
+			}
+			engine.dispose();
+			return;
+		}
+		if (paused || lost) return;
 		const t0 = performance.now();
 		frame++;
 		renderer.setRenderTarget(null);
@@ -354,10 +403,14 @@ export async function initEngine(canvas: HTMLCanvasElement): Promise<Engine | nu
 		e.preventDefault();
 		lost = true;
 		lostTimer = window.setTimeout(() => {
-			if (!lost) return;
+			if (!lost || disposed) return;
+			// Only the live engine may switch the site to the static build (a stale one from a
+			// re-mounted layout just goes away).
+			const live = getEngine() === engine && canvas.isConnected;
+			engine.dispose();
+			if (!live) return;
 			log(t().status.contextLost);
 			markNoWebGL();
-			engine.dispose();
 			setEngine(null);
 		}, CONTEXT_RESTORE_MS);
 	};
@@ -369,9 +422,18 @@ export async function initEngine(canvas: HTMLCanvasElement): Promise<Engine | nu
 	canvas.addEventListener('webglcontextlost', onLost);
 	canvas.addEventListener('webglcontextrestored', onRestored);
 
-	const offInput = initInput({ crowd, numbers, selection, setViewMode: (m) => engine.setViewMode(m) });
+	const offInput = initInput({
+		crowd,
+		numbers,
+		selection,
+		setViewMode: (m) => engine.setViewMode(m)
+	});
 
-	const engine: Engine & { crowd: Crowd; selection: typeof selection; fx: { numbers: NumbersFx; viewModes: ViewModesFx; ink: InkFx } } = {
+	const engine: Engine & {
+		crowd: Crowd;
+		selection: typeof selection;
+		fx: { numbers: NumbersFx; viewModes: ViewModesFx; ink: InkFx };
+	} = {
 		renderer,
 		crowd,
 		numbers,
@@ -379,7 +441,11 @@ export async function initEngine(canvas: HTMLCanvasElement): Promise<Engine | nu
 		fx: { numbers, viewModes, ink },
 		addView: (v: GLView) => views.add(v),
 		createNumbers(o) {
-			const n = guard<NumbersFx>('damage numbers', () => createDamageNumbers(renderer, o), noopNumbers);
+			const n = guard<NumbersFx>(
+				'damage numbers',
+				() => createDamageNumbers(renderer, o),
+				noopNumbers
+			);
 			// Overlay instances are drawn by the engine; view instances live in their view's scene.
 			if (!o.view) {
 				extraNumbers.add(n);

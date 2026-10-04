@@ -76,13 +76,13 @@ const CSS = /* css */ `
 }
 .hyv-debug__stats h2 {
 	margin: 0 0 8px; font: inherit; font-weight: 600; letter-spacing: inherit;
-	display: flex; justify-content: space-between;
+	display: flex; justify-content: space-between; gap: 8px; white-space: nowrap;
 }
 .hyv-debug__row { display: flex; justify-content: space-between; gap: 8px; padding: 1px 0; }
 .hyv-debug__row span:first-child { opacity: 0.72; }
 .hyv-debug__spark { display: block; width: 100%; height: 28px; margin: 4px 0 6px; }
 @media (max-width: 639px) {
-	.hyv-debug__stats { top: 56px; right: 16px; width: 160px; padding: 8px 10px 10px; }
+	.hyv-debug__stats { top: 56px; right: 16px; width: 172px; padding: 8px 10px 10px; }
 }
 `;
 
@@ -118,7 +118,10 @@ function describe(el: HTMLElement): string {
 
 const pad4 = (n: number) => String(Math.max(0, Math.round(n))).padStart(4, '0');
 
-export function createDebugOverlay(renderer: THREE.WebGLRenderer, o: DebugOverlayOptions = {}): DebugOverlay {
+export function createDebugOverlay(
+	renderer: THREE.WebGLRenderer,
+	o: DebugOverlayOptions = {}
+): DebugOverlay {
 	ensureStyle();
 	const aggroPx = o.aggroPx ?? (() => 0.22 * (window.innerHeight / 2));
 
@@ -261,7 +264,8 @@ export function createDebugOverlay(renderer: THREE.WebGLRenderer, o: DebugOverla
 		// 60 fps budget line.
 		ctx.fillStyle = cobalt;
 		ctx.globalAlpha = 0.3;
-		for (let x = 0; x < w; x += 4 * dpr) ctx.fillRect(x, Math.round(h * (1 - 60 / 75)), 2 * dpr, dpr);
+		for (let x = 0; x < w; x += 4 * dpr)
+			ctx.fillRect(x, Math.round(h * (1 - 60 / 75)), 2 * dpr, dpr);
 		ctx.globalAlpha = 1;
 		const n = Math.min(sampleCount, SPARK_SAMPLES);
 		if (n < 2) return;
@@ -344,7 +348,9 @@ export function createDebugOverlay(renderer: THREE.WebGLRenderer, o: DebugOverla
 		},
 		setBand(top, bottom) {
 			root.style.clipPath =
-				top <= 0 && bottom >= 1 ? '' : `inset(${(top * 100).toFixed(2)}% 0 ${((1 - bottom) * 100).toFixed(2)}% 0)`;
+				top <= 0 && bottom >= 1
+					? ''
+					: `inset(${(top * 100).toFixed(2)}% 0 ${((1 - bottom) * 100).toFixed(2)}% 0)`;
 		},
 		update(dt) {
 			if (!visible) return;

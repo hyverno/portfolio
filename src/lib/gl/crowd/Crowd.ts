@@ -8,12 +8,20 @@ import type { Crowd as CrowdApi, CrowdParams, FormationSource, Glyph, Preset, Re
 import { BakeQueue, bake, type BakeInput, type Baked, type InternalSource } from './bakers';
 import { DEFAULT_PARAMS, GLYPH_CODE, NUMERIC_PARAMS, PRESETS, type NumericParam } from './presets';
 import { Regions, type RectPx, type RegionRef } from './regions';
-import { Sim, type Uniforms } from './Sim';
+import { Sim, type CompileJob, type Uniforms } from './Sim';
 import { NAMED_FRAG, NAMED_VERT } from './shaders/readback.glsl';
 
 const MAX_NAMED = 8;
 const PING_LIFE = 1.6;
 const REBAKE_DEBOUNCE_MS = 250;
+/** Time constant of the paint lag (≈ how long an entity takes to cross into its new slot). */
+const PAINT_LAG_S = 0.8;
+
+/** Uniform names per blend side (no string building in the frame loop). */
+const SIDE_UNIFORMS = {
+	A: { target: 'uTargetA', paint: 'uPaintA', paintAlt: 'uPaintAltA', flow: 'uFlowA', paths: 'uPathsA' },
+	B: { target: 'uTargetB', paint: 'uPaintB', paintAlt: 'uPaintAltB', flow: 'uFlowB', paths: 'uPathsB' }
+} as const;
 
 export interface CrowdOptions {
 	renderer: THREE.WebGLRenderer;
@@ -161,6 +169,7 @@ export class Crowd implements CrowdApi {
 	private cmd = { active: false, left: 0, top: 0, radiusPx: 0 };
 	private wave = { x: 0, amp: 0.03, active: false, tween: null as gsap.core.Tween | null };
 	private snapNext = false;
+	private paintLag = { from: '', to: '', value: 0 };
 	private scrollY = 0;
 	private lastCount = 0;
 
@@ -263,6 +272,7 @@ export class Crowd implements CrowdApi {
 			uAlpha: { value: 1 },
 			uIds: { value: 0 },
 			uPaintMix: { value: 1 },
+			uPaintLag: { value: 0 },
 			uInk: { value: this.colors.ink },
 			uSignal: { value: this.colors.signal },
 			uPaper: { value: this.colors.paper },
@@ -623,9 +633,14 @@ export class Crowd implements CrowdApi {
 		this.scene.add(this.sim.points);
 	}
 
-	programs(): { name: string; material: THREE.Material; kind: 'quad' | 'points' }[] {
-		const list: { name: string; material: THREE.Material; kind: 'quad' | 'points' }[] = this.sim ? this.sim.programs() : [];
-		list.push({ name: 'crowd.named', material: this.namedPoints.material as THREE.Material, kind: 'points' });
+	programs(): CompileJob[] {
+		const list = this.sim ? this.sim.programs() : [];
+		list.push({
+			name: 'crowd.named',
+			material: this.namedPoints.material as THREE.Material,
+			kind: 'points',
+			offscreen: true
+		});
 		return list;
 	}
 
@@ -646,6 +661,17 @@ export class Crowd implements CrowdApi {
 		U.uCanvasH.value = Math.floor(vh * vp.dpr);
 		(U.uViewport.value as THREE.Vector2).set(vp.w, vh);
 		U.uMix.value = this.mix;
+		// Paint trails the blend by roughly a travel time; a new pair starts from where it stands.
+		const lag = this.paintLag;
+		if (lag.from !== this.a || lag.to !== this.b || this.reduced) {
+			lag.from = this.a;
+			lag.to = this.b;
+			lag.value = this.mix;
+		} else {
+			lag.value += (this.mix - lag.value) * (1 - Math.exp(-dt / PAINT_LAG_S));
+			if (Math.abs(this.mix - lag.value) < 1e-3) lag.value = this.mix;
+		}
+		U.uPaintLag.value = lag.value;
 
 		const p = this.params;
 		for (const k of NUMERIC_PARAMS) {
@@ -756,7 +782,7 @@ export class Crowd implements CrowdApi {
 		this.U.uDensity.value = this.density.texture;
 
 		if (this.countArmed) this.readCount(sim);
-		if (this.frame % 3 === 0 && this.namedNames.length) this.readNamed();
+		if (this.namedNames.length) this.readNamed();
 		r.setRenderTarget(prev);
 	}
 
@@ -771,8 +797,7 @@ export class Crowd implements CrowdApi {
 		if (N2 === this.N || !this.sim) return;
 		const token = ++this.rebuildToken;
 		const list = [...this.formations.values()];
-		const vh = this.viewport.h;
-		const baked = await Promise.all(list.map((f) => this.queue.run(bake(this.bakeInput(f, N2, vh))).promise.catch(() => null)));
+		const baked = await Promise.all(list.map((f) => this.queue.run(bake(this.bakeInput(f, N2))).promise.catch(() => null)));
 		if (token !== this.rebuildToken || this.disposed) return;
 
 		this.U.uSimSize.value = simSize;
@@ -875,11 +900,12 @@ export class Crowd implements CrowdApi {
 		const U = this.U;
 		const tex = f?.tex;
 		if (tex) {
-			U[`uTarget${side}`].value = tex.targets;
-			U[`uPaint${side}`].value = tex.paint ?? this.blank8();
-			U[`uPaintAlt${side}`].value = tex.paintAlt ?? this.blank8();
-			U[`uFlow${side}`].value = tex.flow ?? this.blankF();
-			U[`uPaths${side}`].value = tex.paths ?? this.blankF();
+			const k = SIDE_UNIFORMS[side];
+			U[k.target].value = tex.targets;
+			U[k.paint].value = tex.paint ?? this.blank8();
+			U[k.paintAlt].value = tex.paintAlt ?? this.blank8();
+			U[k.flow].value = tex.flow ?? this.blankF();
+			U[k.paths].value = tex.paths ?? this.blankF();
 			const on = U.uFlowOn.value as THREE.Vector2;
 			const rows = U.uPathRows.value as THREE.Vector2;
 			if (side === 'A') {
@@ -939,14 +965,18 @@ export class Crowd implements CrowdApi {
 		this.presetTween = gsap.to(this.params, { ...values, duration, ease: 'steer', overwrite: 'auto' });
 	}
 
-	private bakeInput(f: Formation, N: number, vh: number): BakeInput {
-		return { id: f.id, src: f.src, N, w: Math.max(1, f.ref.w), h: Math.max(1, f.ref.h), vh, el: f.region.el };
+	private bakeInput(f: Formation, N: number): BakeInput {
+		const { w: vw, h: vh } = this.viewport;
+		const r = f.ref;
+		const w = Math.max(1, r.w);
+		const cx = r.viewport ? 0 : (vw / 2 - (r.left + w / 2)) / (w / 2);
+		return { id: f.id, src: f.src, N, w, h: Math.max(1, r.h), vw, vh, cx, el: f.region.el };
 	}
 
 	private bakeFormation(f: Formation): void {
 		f.job?.cancel();
 		const N = this.N;
-		const job = this.queue.run(bake(this.bakeInput(f, N, this.viewport.h)));
+		const job = this.queue.run(bake(this.bakeInput(f, N)));
 		f.job = job;
 		job.promise.then(
 			(baked) => {
@@ -999,14 +1029,19 @@ export class Crowd implements CrowdApi {
 
 	/** Tracks up to 8 named slots of the formations on screen (dominant side first). */
 	private updateNamedSlots(fa: Formation | undefined, fb: Formation | undefined): void {
-		const first = this.mix >= 0.5 ? fb : fa;
-		const second = this.mix >= 0.5 ? fa : fb;
+		// A side with no influence on any entity (mix 0 or 1) names nobody.
+		const a = this.mix < 1 ? fa : undefined;
+		const b = this.mix > 0 ? fb : undefined;
+		const first = this.mix >= 0.5 ? b : a;
+		const second = this.mix >= 0.5 ? a : b;
 		const n0 = this.namedNames.length;
 		let n = this.collectNamed(first, 0);
 		if (second !== first) n = this.collectNamed(second, n);
 		if (n !== n0 || this.namedDirty) {
-			for (let i = n; i < n0; i++) this.namedCache.delete(this.namedNames[i]);
 			this.namedNames.length = n;
+			for (const name of this.namedCache.keys()) {
+				if (!this.namedNames.includes(name)) this.namedCache.delete(name);
+			}
 			this.namedIds.fill(-1, n);
 			(this.namedGeo.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
 			this.namedGeo.setDrawRange(0, n);
@@ -1039,43 +1074,55 @@ export class Crowd implements CrowdApi {
 		return n;
 	}
 
+	/** Renders the 8×1 named RT and reads it back: async every 3 frames, else sync every 6th (§8 risk 7). */
 	private readNamed(): void {
 		if (this.namedBusy) return;
 		const r = this.renderer;
+		const canAsync = typeof (r as { readRenderTargetPixelsAsync?: unknown }).readRenderTargetPixelsAsync === 'function';
+		if (this.frame % (canAsync ? 3 : 6) !== 0) return;
 		r.setRenderTarget(this.namedRT);
 		r.clear(true, false, false);
 		r.render(this.namedPoints, this.camera);
-		const names = this.namedNames.slice();
-		const decode = () => {
-			const b = this.namedBuf;
-			const vp = this.viewport;
-			const visibleCrowd = this.state.alpha > 0;
-			for (let i = 0; i < names.length; i++) {
-				const hx = b[i * 4];
-				const lx = b[i * 4 + 1];
-				const hy = b[i * 4 + 2];
-				const ly = b[i * 4 + 3];
-				const spawned = hx + lx + hy + ly > 0;
-				const x = (hx * 256 + lx) / 4 - 8192;
-				const y = (hy * 256 + ly) / 4 - 8192;
-				const entry = this.namedCache.get(names[i]) ?? { x: 0, y: 0, visible: false };
-				entry.x = x;
-				entry.y = y;
-				entry.visible = spawned && visibleCrowd && x >= 0 && y >= 0 && x <= vp.w && y <= vp.h;
-				this.namedCache.set(names[i], entry);
-			}
-		};
-		const asyncRead = (r as THREE.WebGLRenderer & { readRenderTargetPixelsAsync?: unknown }).readRenderTargetPixelsAsync;
-		if (typeof asyncRead === 'function') {
+		const snap = this.namedSnapshot;
+		snap.length = 0;
+		for (const name of this.namedNames) snap.push(name);
+		if (canAsync) {
 			this.namedBusy = true;
-			r.readRenderTargetPixelsAsync(this.namedRT, 0, 0, MAX_NAMED, 1, this.namedBuf)
-				.then(decode, () => {})
-				.finally(() => (this.namedBusy = false));
-		} else if (this.frame % 6 === 0) {
+			r.readRenderTargetPixelsAsync(this.namedRT, 0, 0, MAX_NAMED, 1, this.namedBuf).then(this.decodeNamed, this.namedDone);
+		} else {
 			r.readRenderTargetPixels(this.namedRT, 0, 0, MAX_NAMED, 1, this.namedBuf);
-			decode();
+			this.decodeNamed();
 		}
 	}
+
+	private namedSnapshot: string[] = [];
+	private namedDone = (): void => {
+		this.namedBusy = false;
+	};
+
+	private decodeNamed = (): void => {
+		this.namedBusy = false;
+		const b = this.namedBuf;
+		const vp = this.viewport;
+		const names = this.namedSnapshot;
+		const visibleCrowd = this.state.alpha > 0;
+		for (let i = 0; i < names.length; i++) {
+			// Dropped while the read was in flight.
+			if (this.namedNames[i] !== names[i]) continue;
+			const hx = b[i * 4];
+			const lx = b[i * 4 + 1];
+			const hy = b[i * 4 + 2];
+			const ly = b[i * 4 + 3];
+			const spawned = hx + lx + hy + ly > 0;
+			const x = (hx * 256 + lx) / 4 - 8192;
+			const y = (hy * 256 + ly) / 4 - 8192;
+			let entry = this.namedCache.get(names[i]);
+			if (!entry) this.namedCache.set(names[i], (entry = { x: 0, y: 0, visible: false }));
+			entry.x = x;
+			entry.y = y;
+			entry.visible = spawned && visibleCrowd && x >= 0 && y >= 0 && x <= vp.w && y <= vp.h;
+		}
+	};
 
 	private readCount(sim: Sim): void {
 		this.countArmed = false;

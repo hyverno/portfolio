@@ -20,6 +20,8 @@ export interface RegionRef {
 	/** Size in CSS px (as last measured). */
 	readonly w: number;
 	readonly h: number;
+	/** Left edge in CSS px (pages never scroll horizontally, so this is also the viewport x). */
+	readonly left: number;
 	/** body / html: the region is the canvas viewport itself (never scrolls). */
 	readonly viewport: boolean;
 }
@@ -64,7 +66,18 @@ export class Regions {
 		let e = this.entries.find((x) => x.el === el && x.space === space);
 		if (!e) {
 			const viewport = el === document.body || el === document.documentElement;
-			e = { el, space, w: 0, h: 0, left: 0, top: 0, viewport, pin: null, refs: 0, listeners: new Set() };
+			e = {
+				el,
+				space,
+				w: 0,
+				h: 0,
+				left: 0,
+				top: 0,
+				viewport,
+				pin: null,
+				refs: 0,
+				listeners: new Set()
+			};
 			this.entries.push(e);
 			this.measure(e, false);
 			if (!viewport) this.ro.observe(el);

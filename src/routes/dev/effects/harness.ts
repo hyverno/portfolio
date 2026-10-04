@@ -1,29 +1,128 @@
-// DEV-only harness: own renderer + fake crowd, driving the real effects modules frame by frame
-// in the engine's order (crowd → view modes → damage numbers → ink swarm).
+// DEV-only bench for the GL effects. Two backends behind one interface:
+//   'fake'   own renderer + fake crowd, driving the real effect modules frame by frame in the
+//            engine's order (crowd → view modes → damage numbers → ink swarm);
+//   'engine' the layout's real engine, through its public Engine API (integration check).
 import * as THREE from 'three';
 import { HOSE_GRAVITY, createDamageNumbers } from '#lib/gl/numbers/DamageNumbers';
-import { createViewModesImpl, type ViewModes } from '#lib/gl/viewmodes';
+import { createViewModes } from '#lib/gl/viewmodes';
 import { createInkSwarm } from '#lib/gl/inkswarm';
 import { hexToLinear } from '#lib/core/theme.svelte';
 import { stats } from '#lib/core/stats.svelte';
-import type { ViewMode } from '#lib/gl/types';
+import type { DamageNumbers, Engine, ViewMode } from '#lib/gl/types';
 import { createFakeCrowd } from './fakeCrowd';
 
-export interface Harness {
-	burst(x?: number, y?: number, crit?: number): void;
+export interface BenchInfo {
+	live: number;
+	total: number;
+	mode: ViewMode;
+	ink: boolean;
+	z: string;
+}
+
+export interface Bench {
+	readonly source: 'fake' | 'engine';
+	burst(x?: number, y?: number, critRate?: number): void;
 	crumbs(x?: number, y?: number): void;
 	hose(on?: boolean): boolean;
 	rain(on?: boolean): boolean;
 	mode(m: ViewMode): void;
 	cover(): Promise<void>;
 	reveal(): Promise<void>;
-	readonly modes: ViewModes;
-	readonly info: { live: number; total: number; mode: ViewMode; ink: boolean; z: string };
+	readonly info: BenchInfo;
 	dispose(): void;
 }
 
-export function createHarness(canvas: HTMLCanvasElement, o: { simSize?: number } = {}): Harness {
-	const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, powerPreference: 'high-performance' });
+/** What a backend has to provide; the bench adds hose/rain/burst choreography on top. */
+interface Backend {
+	numbers: DamageNumbers;
+	canvas: HTMLCanvasElement;
+	ping(x: number, y: number): void;
+	readonly mode: ViewMode;
+	setMode(m: ViewMode): void;
+	cover(): Promise<void>;
+	reveal(): Promise<void>;
+	readonly inkActive: boolean;
+	dispose(): void;
+}
+
+const APRICOT = hexToLinear('#F2894B');
+
+function createBench(source: Bench['source'], b: Backend): Bench {
+	let hoseOn = false;
+	let rainOn = false;
+	let rainClock = 0;
+	let raf = 0;
+	let last = performance.now();
+
+	function hoseFrame(dt: number) {
+		// The Lab hose: ballistic numbers from a bottom-left nozzle, g = 900 px/s².
+		const n = Math.ceil(dt * 900);
+		for (let i = 0; i < n; i++) {
+			const a = (-62 + (Math.random() - 0.5) * 18) * (Math.PI / 180);
+			const speed = 700 + Math.random() * 260;
+			b.numbers.spawn(80, innerHeight - 90, {
+				vx: Math.cos(a) * speed,
+				vy: Math.sin(a) * speed,
+				gravity: HOSE_GRAVITY,
+				crit: Math.random() < 0.1
+			});
+		}
+	}
+
+	function frame(now: number) {
+		raf = requestAnimationFrame(frame);
+		const dt = Math.min(0.1, (now - last) / 1000);
+		last = now;
+		if (hoseOn) hoseFrame(dt);
+		if (rainOn && (rainClock -= dt) <= 0) {
+			rainClock = 0.28;
+			bench.burst(
+				innerWidth * (0.2 + Math.random() * 0.6),
+				innerHeight * (0.25 + Math.random() * 0.5)
+			);
+		}
+	}
+	raf = requestAnimationFrame(frame);
+
+	const bench: Bench = {
+		source,
+		burst(x = innerWidth / 2, y = innerHeight / 2, critRate = 0.1) {
+			b.ping(x, y);
+			b.numbers.burst(x, y, { count: 12 + Math.floor(Math.random() * 29), radius: 54, critRate });
+		},
+		crumbs(x = innerWidth / 2, y = innerHeight / 2) {
+			b.numbers.burst(x, y, { count: 18, radius: 40, glyph: 'dot', color: APRICOT });
+		},
+		hose: (on = !hoseOn) => (hoseOn = on),
+		rain: (on = !rainOn) => (rainOn = on),
+		mode: (m) => b.setMode(m),
+		cover: () => b.cover(),
+		reveal: () => b.reveal(),
+		get info() {
+			return {
+				live: b.numbers.live,
+				total: b.numbers.total,
+				mode: b.mode,
+				ink: b.inkActive,
+				z: b.canvas.style.zIndex
+			};
+		},
+		dispose() {
+			cancelAnimationFrame(raf);
+			b.dispose();
+		}
+	};
+	return bench;
+}
+
+/** Own WebGLRenderer + fake crowd. */
+export function createFakeBench(canvas: HTMLCanvasElement, o: { simSize?: number } = {}): Bench {
+	const renderer = new THREE.WebGLRenderer({
+		canvas,
+		alpha: true,
+		antialias: false,
+		powerPreference: 'high-performance'
+	});
 	const dpr = Math.min(1.5, window.devicePixelRatio || 1);
 	renderer.setPixelRatio(dpr);
 	renderer.setSize(innerWidth, innerHeight, false);
@@ -32,7 +131,7 @@ export function createHarness(canvas: HTMLCanvasElement, o: { simSize?: number }
 
 	const fake = createFakeCrowd(renderer, o.simSize ?? 128);
 	const numbers = createDamageNumbers(renderer, { capacity: 16384 });
-	const modes = createViewModesImpl(renderer, fake.gpu);
+	const modes = createViewModes(renderer, fake.gpu);
 	const ink = createInkSwarm(renderer, fake.gpu, fake.crowd);
 	const effects = [modes, numbers, ink];
 	stats.entities = fake.gpu.N;
@@ -55,26 +154,7 @@ export function createHarness(canvas: HTMLCanvasElement, o: { simSize?: number }
 		for (const e of effects) e.resize?.(w, h, dpr);
 	}
 	window.addEventListener('resize', resize);
-
-	let hoseOn = false;
-	let rainOn = false;
-	let rainClock = 0;
-	const apricot = hexToLinear('#F2894B');
-
-	function hoseFrame(dt: number) {
-		// The Lab hose: ballistic numbers from the bottom-left nozzle, g = 900 px/s².
-		const n = Math.ceil(dt * 900);
-		for (let i = 0; i < n; i++) {
-			const a = (-62 + (Math.random() - 0.5) * 18) * (Math.PI / 180);
-			const speed = 700 + Math.random() * 260;
-			numbers.spawn(80, innerHeight - 90, {
-				vx: Math.cos(a) * speed,
-				vy: Math.sin(a) * speed,
-				gravity: HOSE_GRAVITY,
-				crit: Math.random() < 0.1
-			});
-		}
-	}
+	for (const e of effects) e.resize?.(innerWidth, innerHeight, dpr);
 
 	let raf = 0;
 	let last = performance.now();
@@ -84,15 +164,6 @@ export function createHarness(canvas: HTMLCanvasElement, o: { simSize?: number }
 		const dt = Math.min(0.1, (now - last) / 1000);
 		last = now;
 		const t = (now - t0) / 1000;
-
-		if (hoseOn) hoseFrame(dt);
-		if (rainOn) {
-			rainClock -= dt;
-			if (rainClock <= 0) {
-				rainClock = 0.28;
-				api.burst(innerWidth * (0.2 + Math.random() * 0.6), innerHeight * (0.25 + Math.random() * 0.5));
-			}
-		}
 
 		renderer.info.reset();
 		const s0 = performance.now();
@@ -112,28 +183,18 @@ export function createHarness(canvas: HTMLCanvasElement, o: { simSize?: number }
 	}
 	raf = requestAnimationFrame(frame);
 
-	const api: Harness = {
-		burst(x = innerWidth / 2, y = innerHeight / 2, crit = 0.1) {
-			fake.crowd.ping(x, y);
-			numbers.burst(x, y, { count: 12 + Math.floor(Math.random() * 29), radius: 70, critRate: crit });
+	return createBench('fake', {
+		numbers,
+		canvas,
+		ping: (x, y) => fake.crowd.ping(x, y),
+		get mode() {
+			return modes.mode;
 		},
-		crumbs(x = innerWidth / 2, y = innerHeight / 2) {
-			numbers.burst(x, y, { count: 18, radius: 40, glyph: 'dot', color: apricot });
-		},
-		hose(on = !hoseOn) {
-			return (hoseOn = on);
-		},
-		rain(on = !rainOn) {
-			return (rainOn = on);
-		},
-		mode(m) {
-			modes.set(m);
-		},
-		modes,
+		setMode: (m) => modes.set(m),
 		cover: () => ink.cover(),
 		reveal: () => ink.reveal(),
-		get info() {
-			return { live: numbers.live, total: numbers.total, mode: modes.mode, ink: ink.active, z: canvas.style.zIndex };
+		get inkActive() {
+			return ink.active;
 		},
 		dispose() {
 			cancelAnimationFrame(raf);
@@ -144,6 +205,35 @@ export function createHarness(canvas: HTMLCanvasElement, o: { simSize?: number }
 			fake.dispose();
 			renderer.dispose();
 		}
-	};
-	return api;
+	});
+}
+
+/** The layout's engine, through the public API only. */
+export function createEngineBench(engine: Engine): Bench {
+	const canvas = (engine.renderer as THREE.WebGLRenderer).domElement;
+	let covering = false;
+	return createBench('engine', {
+		numbers: engine.numbers,
+		canvas,
+		ping: (x, y) => engine.crowd.ping(x, y),
+		get mode() {
+			return engine.viewMode;
+		},
+		setMode: (m) => engine.setViewMode(m),
+		async cover() {
+			covering = true;
+			await engine.inkCover();
+		},
+		async reveal() {
+			await engine.inkReveal();
+			covering = false;
+		},
+		get inkActive() {
+			return covering;
+		},
+		dispose() {
+			if (engine.viewMode !== 1) engine.setViewMode(1);
+			if (covering) void engine.inkReveal();
+		}
+	});
 }

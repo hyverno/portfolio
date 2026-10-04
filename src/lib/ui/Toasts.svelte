@@ -42,12 +42,26 @@
 		};
 	});
 
-	const wait = (ms: number) => new Promise<void>((r) => (timer = setTimeout(r, ms)));
+	/** Ends the current hold early (an ULTRA toast pre-empting a status message). */
+	let skipHold: (() => void) | null = null;
+
+	const hold = (ms: number) =>
+		new Promise<void>((r) => {
+			skipHold = r;
+			timer = setTimeout(r, ms);
+		});
 
 	function pump() {
-		if (!ready || current || toastQueue.length === 0) return;
+		if (!ready || toastQueue.length === 0) return;
+		const ultra = toastQueue[0].kind === 'ultra';
+		if (current) {
+			// #1,445 is the one choreographed payoff: it cuts a status message short.
+			if (ultra && current.kind === 'info') skipHold?.();
+			return;
+		}
 		clearTimeout(timer);
-		timer = setTimeout(show, Math.max(0, lastShown + GAP_MS - performance.now()));
+		const gap = ultra ? 0 : Math.max(0, lastShown + GAP_MS - performance.now());
+		timer = setTimeout(show, gap);
 	}
 
 	async function show() {
@@ -67,16 +81,23 @@
 					ease: reduced ? 'none' : EASE.spawn
 				});
 			}
-			await wait(HOLD_MS);
+			await hold(HOLD_MS);
+			skipHold = null;
 			if (card && alive) {
-				await gsap.to(card, {
+				const exit = gsap.to(card, {
 					autoAlpha: 0,
 					y: reduced ? 0 : 8,
 					duration: EXIT_S,
 					ease: reduced ? 'none' : EASE.despawn
 				});
+				// rAF stops in background tabs; the queue must not stall behind a frozen tween.
+				await Promise.race([
+					exit.then(() => {}),
+					new Promise((r) => setTimeout(r, EXIT_S * 1000 + 100))
+				]);
 			}
 		} finally {
+			skipHold = null;
 			if (alive) current = null;
 		}
 	}

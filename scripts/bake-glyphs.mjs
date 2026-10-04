@@ -16,7 +16,10 @@ const require = createRequire(import.meta.url);
 const fontkit = require('fontkit');
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const FONT = resolve(root, 'node_modules/@fontsource-variable/archivo/files/archivo-latin-wdth-normal.woff2');
+const FONT = resolve(
+	root,
+	'node_modules/@fontsource-variable/archivo/files/archivo-latin-wdth-normal.woff2'
+);
 const OUT = resolve(root, 'src/lib/gen/glyphs.json');
 
 const JOBS = [
@@ -52,7 +55,12 @@ function openInstance(settings) {
 				const xs = (g.points ?? []).map((p) => p.x);
 				const ys = (g.points ?? []).map((p) => p.y);
 				const box = xs.length
-					? { minX: Math.min(...xs), minY: Math.min(...ys), maxX: Math.max(...xs), maxY: Math.max(...ys) }
+					? {
+							minX: Math.min(...xs),
+							minY: Math.min(...ys),
+							maxX: Math.max(...xs),
+							maxY: Math.max(...ys)
+						}
 					: { minX: 0, minY: 0, maxX: 0, maxY: 0 };
 				this._getCBox = () => box;
 				try {
@@ -70,7 +78,12 @@ function openInstance(settings) {
 			} else {
 				// Composite: only the component offsets carry deltas (their outlines vary on their own).
 				out.components = g.components.map((c) => ({ ...c }));
-				const offsets = out.components.map((c) => ({ onCurve: true, endContour: true, x: c.dx, y: c.dy }));
+				const offsets = out.components.map((c) => ({
+					onCurve: true,
+					endContour: true,
+					x: c.dx,
+					y: c.dy
+				}));
 				const all = [...offsets, ...phantoms()];
 				vp.transformPoints(this.id, all);
 				out.components.forEach((c, i) => {

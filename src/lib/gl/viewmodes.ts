@@ -4,8 +4,21 @@
 import * as THREE from 'three';
 import type { CrowdGPU, CreateViewModes, Effect } from './internal';
 import type { ViewMode } from './types';
-import { FULLSCREEN_VERT, OVERLAY_MATERIAL, ditherPx, drawOverlay, fullscreenMesh } from './effects/overlay';
-import { DENSITY_FRAG, QUADTREE_FRAG, SCANLINE_FRAG, VELOCITY_FRAG, VELOCITY_VERT } from './effects/viewmodes.glsl';
+import {
+	FULLSCREEN_VERT,
+	OVERLAY_MATERIAL,
+	densityNorm,
+	ditherPx,
+	drawOverlay,
+	fullscreenMesh
+} from './effects/overlay';
+import {
+	DENSITY_FRAG,
+	QUADTREE_FRAG,
+	SCANLINE_FRAG,
+	VELOCITY_FRAG,
+	VELOCITY_VERT
+} from './effects/viewmodes.glsl';
 import { createDebugOverlay } from './debugOverlay';
 import { gsap, registerMotion } from '#lib/core/motion';
 import { device } from '#lib/core/device.svelte';
@@ -19,7 +32,7 @@ const APRICOT = '#F2894B';
 export interface ViewModeParams {
 	/** Density → ramp gain for [2] (soft knee: t = 1 − e^(−d·gain)). */
 	densityGain: number;
-	/** Mean cell density above which a quadtree cell subdivides ([3]). */
+	/** Share of the whole crowd above which a quadtree cell subdivides ([3], §S4: .02). */
 	quadThreshold: number;
 	/** Velocity vector length: pos → pos + vel × scale (world units, [3]). */
 	vectorScale: number;
@@ -52,18 +65,25 @@ function velocityGeometry(simSize: number): THREE.BufferGeometry {
 export function createViewModesImpl(renderer: THREE.WebGLRenderer, gpu: CrowdGPU): ViewModes {
 	registerMotion();
 	const snap = gsap.parseEase('snap') ?? ((p: number) => p);
-	const params: ViewModeParams = { densityGain: 2.5, quadThreshold: 0.02, vectorScale: 0.08, sweepMs: SWEEP_MS };
+	const params: ViewModeParams = {
+		densityGain: 2.5,
+		quadThreshold: 0.02,
+		vectorScale: 0.08,
+		sweepMs: SWEEP_MS
+	};
 
 	// Shared uniform values: every pass reads the same objects.
 	const resolution = new THREE.Vector2(1, 1);
 	const dpr = { value: 1 };
 	const mask = (): { value: THREE.Vector2 } => ({ value: new THREE.Vector2(0, 1) });
+	const norm = { value: densityNorm(gpu) };
 
 	const density = new THREE.ShaderMaterial({
 		vertexShader: FULLSCREEN_VERT,
 		fragmentShader: DENSITY_FRAG,
 		uniforms: {
 			uDensity: { value: gpu.densityTexture() },
+			uNorm: norm,
 			uGain: { value: params.densityGain },
 			uDitherPx: { value: 2 },
 			uApricot: { value: new THREE.Vector3(...hexToLinear(APRICOT)) },
@@ -80,6 +100,7 @@ export function createViewModesImpl(renderer: THREE.WebGLRenderer, gpu: CrowdGPU
 		fragmentShader: QUADTREE_FRAG,
 		uniforms: {
 			uDensity: { value: gpu.densityTexture() },
+			uNorm: norm,
 			uDensitySize: { value: gpu.densitySize },
 			uThreshold: { value: params.quadThreshold },
 			uMipmaps: { value: gpu.densityMipmaps ? 1 : 0 },
@@ -215,6 +236,7 @@ export function createViewModesImpl(renderer: THREE.WebGLRenderer, gpu: CrowdGPU
 			dpr.value = r.getPixelRatio();
 
 			const tex = gpu.densityTexture();
+			norm.value = densityNorm(gpu);
 			const du = density.uniforms;
 			du.uDensity.value = tex;
 			du.uGain.value = params.densityGain;

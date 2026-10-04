@@ -59,9 +59,18 @@ export const d20: FormationSource = {
 	build({ N, w, h, rand }: BakeCtx): BakeResult {
 		const p = (1 + Math.sqrt(5)) / 2;
 		const v = [
-			[-1, p, 0], [1, p, 0], [-1, -p, 0], [1, -p, 0],
-			[0, -1, p], [0, 1, p], [0, -1, -p], [0, 1, -p],
-			[p, 0, -1], [p, 0, 1], [-p, 0, -1], [-p, 0, 1]
+			[-1, p, 0],
+			[1, p, 0],
+			[-1, -p, 0],
+			[1, -p, 0],
+			[0, -1, p],
+			[0, 1, p],
+			[0, -1, -p],
+			[0, 1, -p],
+			[p, 0, -1],
+			[p, 0, 1],
+			[-p, 0, -1],
+			[-p, 0, 1]
 		];
 		const edges: [number, number][] = [];
 		for (let i = 0; i < 12; i++) {
@@ -115,5 +124,9 @@ export const house: FormationSource = {
 	viewBox: [200, 200],
 	mode: 'stroke',
 	share: 0.75,
-	paths: ['M40 120 L100 50 L160 120 Z', 'M55 120 L55 165 L145 165 L145 120', 'M60 165 L60 195 M140 165 L140 195 M88 165 L88 135 L112 135 L112 165']
+	paths: [
+		'M40 120 L100 50 L160 120 Z',
+		'M55 120 L55 165 L145 165 L145 120',
+		'M60 165 L60 195 M140 165 L140 195 M88 165 L88 135 L112 135 L112 165'
+	]
 };

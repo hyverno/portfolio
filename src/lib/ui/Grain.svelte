@@ -82,6 +82,11 @@
 		animation: none;
 	}
 
+	/* Governor step 4 (§7): the engine drops the grain before it drops a tier. */
+	:global(html.governor-no-grain) .grain {
+		display: none;
+	}
+
 	@keyframes grain {
 		0% {
 			transform: translate(0, 0);

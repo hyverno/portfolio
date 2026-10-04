@@ -26,34 +26,41 @@ export function hilbertIndex(x: number, y: number): number {
 	return d;
 }
 
+/** Slots at or above this weight are "held" (part of the shape); below it they roam. */
+export const HELD_WEIGHT = 0.5;
+
 /**
- * Returns the slot permutation that sorts `targets` (N × vec4, xy used) along the curve:
- * `order[i]` is the original slot that becomes entity i. Positions are normalised to the slots'
- * own bounding box, so two bakes of the same shape at different widths (hero-wide / hero-tall)
- * map letter onto letter. Counting sort over the 65,536 keys: O(N), stable.
+ * Returns the slot permutation that sorts `targets` (N × vec4, xy used, w = weight) along the
+ * curve: `order[i]` is the original slot that becomes entity i.
+ *
+ * Held slots come first, then roaming ones, each group normalised to its OWN bounding box. So two
+ * bakes of the same shape at different widths (hero-wide / hero-tall) map letter onto letter
+ * whatever the free crowd around them does, and roamers trade places with roamers.
+ * Counting sort over 2 × 65,536 keys: O(N), stable.
  */
 export function hilbertOrder(targets: Float32Array, N: number): Uint32Array {
-	let minX = Infinity;
-	let minY = Infinity;
-	let maxX = -Infinity;
-	let maxY = -Infinity;
+	// Per-group bounding boxes: [minX, minY, maxX, maxY] × 2.
+	const box = [Infinity, Infinity, -Infinity, -Infinity, Infinity, Infinity, -Infinity, -Infinity];
 	for (let i = 0; i < N; i++) {
+		const g = targets[i * 4 + 3] >= HELD_WEIGHT ? 0 : 4;
 		const x = targets[i * 4];
 		const y = targets[i * 4 + 1];
-		if (x < minX) minX = x;
-		if (x > maxX) maxX = x;
-		if (y < minY) minY = y;
-		if (y > maxY) maxY = y;
+		if (x < box[g]) box[g] = x;
+		if (y < box[g + 1]) box[g + 1] = y;
+		if (x > box[g + 2]) box[g + 2] = x;
+		if (y > box[g + 3]) box[g + 3] = y;
 	}
-	const sx = (SIDE - 1) / Math.max(1e-6, maxX - minX);
-	const sy = (SIDE - 1) / Math.max(1e-6, maxY - minY);
-
+	const cells = SIDE * SIDE;
 	const keys = new Uint32Array(N);
-	const counts = new Uint32Array(SIDE * SIDE + 1);
+	const counts = new Uint32Array(cells * 2 + 1);
 	for (let i = 0; i < N; i++) {
-		const cx = Math.min(SIDE - 1, Math.max(0, Math.round((targets[i * 4] - minX) * sx)));
-		const cy = Math.min(SIDE - 1, Math.max(0, Math.round((targets[i * 4 + 1] - minY) * sy)));
-		const k = hilbertIndex(cx, cy);
+		const held = targets[i * 4 + 3] >= HELD_WEIGHT;
+		const g = held ? 0 : 4;
+		const sx = (SIDE - 1) / Math.max(1e-6, box[g + 2] - box[g]);
+		const sy = (SIDE - 1) / Math.max(1e-6, box[g + 3] - box[g + 1]);
+		const cx = Math.min(SIDE - 1, Math.max(0, Math.round((targets[i * 4] - box[g]) * sx)));
+		const cy = Math.min(SIDE - 1, Math.max(0, Math.round((targets[i * 4 + 1] - box[g + 1]) * sy)));
+		const k = hilbertIndex(cx, cy) + (held ? 0 : cells);
 		keys[i] = k;
 		counts[k + 1]++;
 	}

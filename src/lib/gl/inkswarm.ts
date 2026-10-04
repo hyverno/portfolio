@@ -5,7 +5,14 @@
 import * as THREE from 'three';
 import type { Crowd } from './types';
 import type { CreateInkSwarm } from './internal';
-import { FULLSCREEN_VERT, OVERLAY_MATERIAL, ditherPx, drawOverlay, fullscreenMesh } from './effects/overlay';
+import {
+	FULLSCREEN_VERT,
+	OVERLAY_MATERIAL,
+	densityNorm,
+	ditherPx,
+	drawOverlay,
+	fullscreenMesh
+} from './effects/overlay';
 import { INK_FRAG } from './effects/ink.glsl';
 import { EASE, gsap, registerMotion } from '#lib/core/motion';
 import { device } from '#lib/core/device.svelte';
@@ -32,6 +39,7 @@ export const createInkSwarm: CreateInkSwarm = (renderer, gpu, crowd) => {
 
 	const uniforms = {
 		uDensity: { value: gpu.densityTexture() },
+		uNorm: { value: densityNorm(gpu) },
 		uResolution: { value: new THREE.Vector2(1, 1) },
 		uInkGain: { value: 0 },
 		uFloor: { value: 0 },
@@ -176,6 +184,7 @@ export const createInkSwarm: CreateInkSwarm = (renderer, gpu, crowd) => {
 			r.getDrawingBufferSize(bufferSize);
 			uniforms.uResolution.value.copy(bufferSize);
 			uniforms.uDensity.value = gpu.densityTexture();
+			uniforms.uNorm.value = densityNorm(gpu);
 			uniforms.uInk.value = gpu.colors.ink;
 			uniforms.uInkGain.value = state.gain;
 			uniforms.uFloor.value = state.floor;

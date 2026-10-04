@@ -9,6 +9,7 @@ import { COBALT_GLSL, MASK_GLSL } from './overlay';
  */
 export const DENSITY_FRAG = /* glsl */ `
 uniform sampler2D uDensity;
+uniform float uNorm;
 uniform float uGain;
 uniform float uDitherPx;
 uniform vec3 uApricot;
@@ -18,7 +19,7 @@ ${MASK_GLSL}
 ${BAYER}
 void main() {
 	if (screenMask() < 0.5) discard;
-	float d = texture2D(uDensity, gl_FragCoord.xy / uResolution).r;
+	float d = texture2D(uDensity, gl_FragCoord.xy / uResolution).r * uNorm;
 	// Soft-knee compression: sparse crowds still register, packed ones saturate into ink.
 	float t = 1.0 - exp(-max(d, 0.0) * uGain);
 	// A small dead zone keeps stray single entities from peppering the page with apricot.
@@ -34,13 +35,16 @@ void main() {
 
 /**
  * [3] DEBUG quadtree: a real adaptive quadtree evaluated per pixel. Square cells (side = the long
- * edge of the canvas / 2^L) subdivide while the mean density of the cell, read from the matching
- * mip level, exceeds uThreshold. Each pixel draws the left/top edges of its deepest cell, which
- * covers every shared edge exactly once whatever the neighbour's depth.
+ * edge of the canvas / 2^L) split while they hold more than uThreshold of the whole crowd:
+ *   share = cell mean (mip at the cell's size) / screen mean (top mip) × cell area / screen area.
+ * The ratio is self-normalising, so splat amplitude and the RGBA8 ×.25 fallback cancel out.
+ * Each pixel draws the left/top edges of its deepest cell, which covers every shared edge exactly
+ * once whatever the neighbour's depth.
  * Without mipmaps it falls back to a fixed 32px grid whose lines fade in with the local density.
  */
 export const QUADTREE_FRAG = /* glsl */ `
 uniform sampler2D uDensity;
+uniform float uNorm;
 uniform float uDensitySize;
 uniform float uThreshold;
 uniform float uMipmaps;
@@ -63,24 +67,29 @@ void main() {
 	float cell;
 
 	if (uMipmaps > 0.5) {
+		float total = textureLod(uDensity, vec2(0.5), log2(uDensitySize)).r;
+		if (total <= 1e-6) discard;
 		float side = max(uResolution.x, uResolution.y);
-		float texelsPerPx = uDensitySize / sqrt(uResolution.x * uResolution.y);
+		float texelsPerPx = uDensitySize / min(uResolution.x, uResolution.y);
+		float screenArea = uResolution.x * uResolution.y;
 		float depth = 0.0;
 		for (int L = 0; L < MAX_DEPTH; L++) {
 			float c = side / exp2(float(L));
 			vec2 centre = (floor(p / c) + 0.5) * c;
 			float lod = log2(max(c * texelsPerPx, 1.0));
-			if (textureLod(uDensity, toUv(centre), lod).r <= uThreshold) break;
+			float share = textureLod(uDensity, toUv(centre), lod).r / total * (c * c / screenArea);
+			if (share <= uThreshold) break;
 			depth = float(L + 1);
 		}
 		if (depth < 0.5) discard;
 		cell = side / exp2(depth);
-		alpha = 0.72;
+		// Deeper cells draw lighter, so packed clumps read as a fine mesh rather than a blot.
+		alpha = mix(0.8, 0.45, (depth - 1.0) / float(MAX_DEPTH - 1));
 	} else {
 		cell = 32.0 * uDpr;
 		vec2 centre = (floor(p / cell) + 0.5) * cell;
-		float d = texture2D(uDensity, toUv(centre)).r;
-		alpha = 0.72 * smoothstep(uThreshold, uThreshold * 8.0, d);
+		float d = texture2D(uDensity, toUv(centre)).r * uNorm;
+		alpha = 0.72 * smoothstep(0.05, 0.4, d);
 		if (alpha < 0.01) discard;
 	}
 

@@ -19,6 +19,7 @@ uniform float uScrollShift;
 uniform vec2 uCarry;
 uniform vec4 uSelectRect;
 uniform float uSelectPass;
+uniform float uAspect;
 
 void main() {
 	vec2 uv = gl_FragCoord.xy / resolution.xy;
@@ -40,6 +41,14 @@ void main() {
 		pos.xy += vel.xy * uDt;
 		// Scroll carry: entities ride the page a little slower than the page (inertia).
 		pos.y += uScrollShift * mix(uCarry.x, uCarry.y, entityMix(id));
+		// Off screen and headed on screen: re-enter at the nearest edge. After a long scroll jump the
+		// crowd streams in at once instead of leaving the page empty while it crosses the distance.
+		// Each waits at its own depth past the edge, so they pour in as a stream, not a wall.
+		vec2 view = vec2(uAspect, 1.0) + 0.15;
+		if (abs(tgt.x) < view.x && abs(tgt.y) < view.y) {
+			vec2 lim = view + 0.6 * hash11(id * 0.917 + 0.3);
+			pos.xy = clamp(pos.xy, -lim, lim);
+		}
 	}
 
 	if (uSelectPass > 0.5) {

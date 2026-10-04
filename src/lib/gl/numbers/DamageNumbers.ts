@@ -133,7 +133,11 @@ export function createDamageNumbersImpl(
 	let ro: ResizeObserver | null = null;
 	if (view) {
 		(view.scene as THREE.Scene).add(mesh);
-		const measure = () => uniforms.uViewport.value.set(Math.max(1, view.el.clientWidth), Math.max(1, view.el.clientHeight));
+		const measure = () =>
+			uniforms.uViewport.value.set(
+				Math.max(1, view.el.clientWidth),
+				Math.max(1, view.el.clientHeight)
+			);
 		measure();
 		ro = new ResizeObserver(measure);
 		ro.observe(view.el);

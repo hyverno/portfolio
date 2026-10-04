@@ -1,6 +1,7 @@
 // Shared plumbing for full-canvas effect passes: a fullscreen triangle, a dummy camera, and a
 // draw helper that composites over whatever is already in the framebuffer.
 import * as THREE from 'three';
+import type { CrowdGPU } from '../internal';
 
 /** Shaders compute clip space themselves; three still needs a camera to call render(). */
 const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -13,7 +14,10 @@ let triangle: THREE.BufferGeometry | null = null;
 export function fullscreenTriangle(): THREE.BufferGeometry {
 	if (!triangle) {
 		triangle = new THREE.BufferGeometry();
-		triangle.setAttribute('position', new THREE.Float32BufferAttribute([-1, -1, 0, 3, -1, 0, -1, 3, 0], 3));
+		triangle.setAttribute(
+			'position',
+			new THREE.Float32BufferAttribute([-1, -1, 0, 3, -1, 0, -1, 3, 0], 3)
+		);
 	}
 	return triangle;
 }
@@ -80,6 +84,15 @@ float screenMask() {
 	return step(uMask.x, y) * (1.0 - step(uMask.y, y));
 }
 `;
+
+/**
+ * Factor that turns a density texel back into raw splat sums. The engine's RGBA8 fallback stores
+ * density × 0.25 and says so through an optional `densityScale` on the CrowdGPU (1 when absent).
+ */
+export function densityNorm(gpu: CrowdGPU): number {
+	const scale = (gpu as CrowdGPU & { densityScale?: number }).densityScale;
+	return scale && scale > 0 ? 1 / scale : 1;
+}
 
 /** Size of the Bayer cell in device px: 2 CSS px reads as a deliberate print screen, not noise. */
 export function ditherPx(renderer: THREE.WebGLRenderer): number {

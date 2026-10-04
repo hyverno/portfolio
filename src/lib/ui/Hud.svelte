@@ -18,7 +18,7 @@
 	import { readStore, writeStore } from '#lib/core/storage';
 	import { fmtNum, langHref, t } from '#lib/i18n/index.svelte';
 	import { loadAchievements, toast } from '#lib/stores/achievements.svelte';
-	import { chrome } from './chrome.svelte';
+	import { chrome, governorStep } from './chrome.svelte';
 	import { createTapCounter, listenKonami, restoreDeveloperMode } from './konami';
 	import { loadSfx, primeSfx, setSfx, sfx, sfxState } from './sfx';
 	import HudStats from './HudStats.svelte';
@@ -85,7 +85,9 @@
 		const appear = pieces.filter((p) => handed.has(p.dataset.hudSlot ?? ''));
 		const slide = pieces.filter((p) => !handed.has(p.dataset.hudSlot ?? ''));
 		const reduced = device.reducedMotion;
-		gsap.set(appear, { autoAlpha: 1 });
+		chrome.hudIn = true;
+		if (appear.length) gsap.set(appear, { autoAlpha: 1 });
+		if (!slide.length) return;
 		gsap.fromTo(
 			slide,
 			{
@@ -101,7 +103,6 @@
 				clearProps: 'transform'
 			}
 		);
-		chrome.hudIn = true;
 	}
 
 	/** Status messages (§6) are shown once per session, after the preloader. */
@@ -119,16 +120,11 @@
 		else decode(contextEl, text);
 	});
 
-	// The governor reports each step itself (§7: "honesty is a feature").
-	let reportedTier = '';
+	// The governor's first step down is announced once per session (§6: "honesty is a feature");
+	// later steps only update the HUD note.
 	$effect(() => {
-		const tier = device.tier;
-		if (!device.governed || tier === reportedTier) return;
-		reportedTier = tier;
-		untrack(() => {
-			const q = t().settings.qualities[tier.toUpperCase() as 'LOW' | 'MED' | 'HIGH'];
-			toast({ kind: 'info', title: t().status.governor(q) });
-		});
+		const step = governorStep();
+		if (step) untrack(() => statusOnce('hyv.st.governor', t().status.governor(step)));
 	});
 
 	onMount(() => {
@@ -226,6 +222,20 @@
 		z-index: var(--z-hud);
 		pointer-events: none;
 		color: var(--ink);
+	}
+
+	/*
+		Map-label backing: a paper plate 3px around each HUD piece. Invisible on the paper itself, it
+		keeps the mono legible when the crowd streams under a corner (the canvas is z 20, the HUD 40).
+	*/
+	.hud :global(:is([data-hud-piece], .selected):not([data-hud-slot='budget'])) {
+		background: var(--paper);
+		box-shadow: 0 0 0 3px var(--paper);
+	}
+
+	.hud .context:empty {
+		background: none;
+		box-shadow: none;
 	}
 
 	/* Hidden until the entrance (JS only: without JS the HUD is simply there). */

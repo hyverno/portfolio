@@ -126,7 +126,9 @@ export function initInput(o: InputOptions): () => void {
 		if (device.reducedMotion) return;
 		crowd.ping(e.clientX, e.clientY);
 		if (FLAGS.numbers) {
-			numbers.burst(e.clientX, e.clientY, { count: 12 + Math.floor(Math.random() * 29), radius: 54, critRate: 0.1 });
+			// 12–40 numbers along the ring; a bigger hit spreads wider so the digits stay readable.
+			const count = 12 + Math.floor(Math.random() * 29);
+			numbers.burst(e.clientX, e.clientY, { count, radius: 40 + count * 2.2, critRate: 0.1 });
 		}
 		sfx('ping');
 		unlock('first-blood');

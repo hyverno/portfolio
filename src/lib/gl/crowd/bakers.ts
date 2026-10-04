@@ -18,8 +18,11 @@ export interface BakeInput {
 	/** Region size, CSS px. */
 	w: number;
 	h: number;
-	/** Viewport height, CSS px (caps glyph height). */
+	/** Viewport size, CSS px (caps glyph height, spreads the roaming crowd). */
+	vw: number;
 	vh: number;
+	/** Horizontal centre of the viewport in region-normalised x (0 when the region is centred). */
+	cx: number;
 	el: HTMLElement;
 }
 
@@ -113,8 +116,11 @@ function* rasterMask(w: number, h: number, draw: (ctx: CanvasRenderingContext2D 
 	return { data, w: cw, h: ch, filled };
 }
 
-/** `count` points (canvas px) inside the mask on a jittered grid, topped up / thinned to exactly `count`. */
-function* sampleMask(mask: Mask, count: number, rand: () => number): Generator<void, Float32Array> {
+/**
+ * `count` points (canvas px) inside the mask on a jittered grid, topped up / thinned to exactly
+ * `count`. A half-cell jitter keeps the even pitch of a halftone without its moiré.
+ */
+function* sampleMask(mask: Mask, count: number, rand: () => number, jitter = 0.55): Generator<void, Float32Array> {
 	const out = new Float32Array(count * 2);
 	if (mask.filled.length === 0 || count === 0) return out;
 	const at = (x: number, y: number) => {
@@ -129,8 +135,8 @@ function* sampleMask(mask: Mask, count: number, rand: () => number): Generator<v
 		pts = [];
 		for (let y = g * 0.5; y < mask.h; y += g) {
 			for (let x = g * 0.5; x < mask.w; x += g) {
-				const px = x + (rand() - 0.5) * g * 0.8;
-				const py = y + (rand() - 0.5) * g * 0.8;
+				const px = x + (rand() - 0.5) * g * jitter;
+				const py = y + (rand() - 0.5) * g * jitter;
 				if (at(px, py)) pts.push(px, py);
 				if (tick()) yield;
 			}
@@ -204,10 +210,25 @@ function* complete(s: Slots, used: number, N: number, rand: () => number, ambien
 	}
 }
 
-function uniformHome(rand: () => number, extent = 1) {
+/**
+ * Homes for the roaming share: a sprinkle over the viewport around the region (in
+ * region-normalised units) that thins out toward the edges, so a formation reads as a crisp shape
+ * inside a living field rather than a smudge, and the HUD corners stay clear. `reject` keeps
+ * homes off the shape itself.
+ */
+function viewportHome(inp: BakeInput, rand: () => number, reject?: (nx: number, ny: number) => boolean) {
+	const ex = Math.max(1.15, (0.96 * inp.vw) / Math.max(1, inp.w));
+	const ey = Math.max(1.15, (0.94 * inp.vh) / Math.max(1, inp.h));
 	return (out: [number, number]) => {
-		out[0] = (rand() * 2 - 1) * extent;
-		out[1] = (rand() * 2 - 1) * extent;
+		for (let tries = 0; tries < 32; tries++) {
+			const u = rand() * 2 - 1;
+			const v = rand() * 2 - 1;
+			// Soft vignette: ~1 at the centre, ~0.25 at the edge midpoints, ~0.06 in the corners.
+			if (rand() > Math.exp(-1.4 * (u * u + v * v))) continue;
+			out[0] = inp.cx + u * ex;
+			out[1] = v * ey;
+			if (!reject?.(out[0], out[1])) return;
+		}
 	};
 }
 
@@ -319,15 +340,8 @@ function* bakeGlyphs(src: Extract<FormationSource, { kind: 'glyphs' }>, inp: Bak
 		}
 		return false;
 	};
-	const home = (out: [number, number]) => {
-		for (let tries = 0; tries < 24; tries++) {
-			out[0] = (rand() * 2 - 1) * 1.3;
-			out[1] = (rand() * 2 - 1) * 1.6;
-			if (!inside(out[0], out[1])) return;
-		}
-	};
 	const s: Slots = { targets: t, named: {} };
-	yield* complete(s, used, N, rand, home);
+	yield* complete(s, used, N, rand, viewportHome(inp, rand, inside));
 	return s;
 }
 
@@ -405,7 +419,7 @@ function* bakeSvg(src: Extract<FormationSource, { kind: 'svg' }>, inp: BakeInput
 		}
 	}
 	const s: Slots = { targets: t, named: {} };
-	yield* complete(s, used, N, rand, uniformHome(rand, 1.2));
+	yield* complete(s, used, N, rand, viewportHome(inp, rand));
 	return s;
 }
 
@@ -476,7 +490,7 @@ function* bakePaths(src: Extract<FormationSource, { kind: 'paths' }>, inp: BakeI
 		for (const p of els) p.remove();
 	}
 	const s: Slots = { targets: t, flow, paths: { data, rows }, paint, named: {} };
-	yield* complete(s, used, N, rand, uniformHome(rand, 1.2));
+	yield* complete(s, used, N, rand, viewportHome(inp, rand));
 	return s;
 }
 
@@ -499,7 +513,7 @@ function* bakePoints(src: Extract<FormationSource, { kind: 'points' }>, inp: Bak
 	const s: Slots = { targets: t, paint: fit(r.paint), paintAlt: fit(r.paintAlt), named: { ...(r.named ?? {}) } };
 	// A builder that returns fewer slots gets ambient padding (it owns its own spare-slot policy).
 	if (used < N) {
-		const home = uniformHome(rand, 1.2);
+		const home = viewportHome(inp, rand);
 		const p: [number, number] = [0, 0];
 		for (let i = used; i < N; i++) {
 			home(p);
@@ -533,8 +547,8 @@ function* bakeSpawn(inp: BakeInput): Generator<void, Slots> {
 	const t = new Float32Array(N * 4);
 	const rank = new Float32Array(N);
 	const aspect = w / Math.max(1, h);
-	// Disc radius in world units (viewport height = 2): dense halftone, ~5px pitch at 16k.
-	const R = Math.min(0.42, 0.24 * Math.sqrt(N / 4096));
+	// Disc radius in world units (viewport height = 2): ~3.5px pitch, so the sunflower reads.
+	const R = Math.min(0.62, 0.3 * Math.sqrt(N / 4096));
 	const tick = ticker();
 	for (let k = 0; k < N; k++) {
 		const r = R * Math.sqrt((k + 0.5) / N);

@@ -4,6 +4,7 @@
 	// live owner + A/B readout. Dev only: production builds 404 here and tree-shake all of it.
 	import { onMount } from 'svelte';
 	import { whenEngine } from '#lib/gl/handle';
+	import { formation } from '#lib/gl/actions';
 	import { collider } from '#lib/core/actions';
 	import { gsap } from '#lib/core/motion';
 	import { stats } from '#lib/core/stats.svelte';
@@ -14,6 +15,8 @@
 
 	const DEV = import.meta.env.DEV;
 	const OWNER = 'dev';
+	// Scroll anchors (use:formation): they drive the crowd whenever the GUI's 'claimed' is off.
+	const HERO_WIDE: FormationSource = { kind: 'glyphs', key: 'HYVERNO_W125' };
 
 	let heroEl = $state<HTMLElement>();
 	let stageEl = $state<HTMLElement>();
@@ -38,16 +41,27 @@
 
 			const hero = { el: heroEl!, space: 'page' as const };
 			const stage = { el: stageEl!, space: 'page' as const };
-			const defs: Record<string, [FormationSource, { el: HTMLElement; space: 'page' | 'fixed' }, { preset?: Preset; glyph?: Glyph }?]> = {
-				'hero-wide': [{ kind: 'glyphs', key: 'HYVERNO_W125' }, hero],
+			const defs: Record<
+				string,
+				[
+					FormationSource,
+					{ el: HTMLElement; space: 'page' | 'fixed' },
+					{ preset?: Preset; glyph?: Glyph }?
+				]
+			> = {
+				'hero-wide': [HERO_WIDE, hero],
 				'hero-tall': [{ kind: 'glyphs', key: 'HYVERNO_W62' }, hero],
-				'dev-1445': [{ kind: 'glyphs', key: '1445' }, { el: document.body, space: 'fixed' }],
+				'dev-1445': [
+					{ kind: 'glyphs', key: '1445' },
+					{ el: document.body, space: 'fixed' }
+				],
 				'dev-circle': [circle, stage],
 				'dev-d20': [d20, stage, { preset: 'march' }],
 				'dev-stream': [stream, stage, { glyph: 'dot' }],
 				'dev-house': [house, stage]
 			};
-			for (const [id, [src, region, o]] of Object.entries(defs)) void crowd.define(id, src, region, o);
+			for (const [id, [src, region, o]] of Object.entries(defs))
+				void crowd.define(id, src, region, o);
 
 			const { default: GUI } = await import('lil-gui');
 			if (!alive) return;
@@ -55,7 +69,18 @@
 			cleanups.push(() => gui.destroy());
 
 			// ── formations ────────────────────────────────────────────────────────────────────
-			const ids = ['hero-wide', 'hero-tall', 'dev-circle', 'dev-d20', 'dev-stream', 'dev-house', 'dev-1445', 'ambient', 'fill', 'spawn'];
+			const ids = [
+				'hero-wide',
+				'hero-tall',
+				'dev-circle',
+				'dev-d20',
+				'dev-stream',
+				'dev-house',
+				'dev-1445',
+				'ambient',
+				'fill',
+				'spawn'
+			];
 			const ctl = { formation: 'hero-wide', duration: 1.4, mix: 1, claimed: true, rotate: true };
 			let current = crowd.current;
 			let tween: gsap.core.Tween | null = null;
@@ -86,7 +111,9 @@
 					const s = crowd.blendState;
 					crowd.blend(s.from, s.to, v, { owner: OWNER });
 				});
-			fF.add(ctl, 'claimed').onChange((v: boolean) => (v ? crowd.claim(OWNER) : crowd.release(OWNER)));
+			fF.add(ctl, 'claimed').onChange((v: boolean) =>
+				v ? crowd.claim(OWNER) : crowd.release(OWNER)
+			);
 			fF.add(ctl, 'rotate').name('rotate d20');
 			go('hero-wide');
 
@@ -117,13 +144,19 @@
 			fI.add(U.uAttractRange, 'value', 0, 2, 0.01).name('attract range');
 
 			const fPre = gui.addFolder('Presets');
-			for (const name of ['calm', 'march', 'panic', 'still'] as Preset[]) fPre.add({ [name]: () => crowd.preset(name) }, name);
+			for (const name of ['calm', 'march', 'panic', 'still'] as Preset[])
+				fPre.add({ [name]: () => crowd.preset(name) }, name);
 
 			// ── actions ───────────────────────────────────────────────────────────────────────
 			const scan = { angle: 0, offset: -1 };
 			const actions = {
 				ping: () => crowd.ping(innerWidth / 2, innerHeight / 2),
-				burst: () => engine.numbers.burst(innerWidth / 2, innerHeight / 2, { count: 32, radius: 60, critRate: 0.1 }),
+				burst: () =>
+					engine.numbers.burst(innerWidth / 2, innerHeight / 2, {
+						count: 32,
+						radius: 60,
+						critRate: 0.1
+					}),
 				wave: () => crowd.sendWave(),
 				selectAll: async () => {
 					const n = await crowd.select(new DOMRectReadOnly(0, 0, innerWidth, innerHeight));
@@ -138,9 +171,20 @@
 				alphaIn: () => crowd.setAlpha(1, { duration: 0.4 }),
 				scanSweep: () => {
 					crowd.set({ glyphAlt: 'xstitch' });
-					gsap.fromTo(scan, { offset: 0 }, { offset: innerWidth * 1.2, duration: 3, ease: 'none', onUpdate: () => crowd.setScan({ angleDeg: scan.angle, offsetPx: scan.offset }), onComplete: () => crowd.setScan(null) });
+					gsap.fromTo(
+						scan,
+						{ offset: 0 },
+						{
+							offset: innerWidth * 1.2,
+							duration: 3,
+							ease: 'none',
+							onUpdate: () => crowd.setScan({ angleDeg: scan.angle, offsetPx: scan.offset }),
+							onComplete: () => crowd.setScan(null)
+						}
+					);
 				},
-				attractStage: () => crowd.attract(0, stageEl!.getBoundingClientRect(), { mode: 'perimeter' }),
+				attractStage: () =>
+					crowd.attract(0, stageEl!.getBoundingClientRect(), { mode: 'perimeter' }),
 				attractOff: () => crowd.attract(0, null)
 			};
 			const fA = gui.addFolder('Actions');
@@ -148,7 +192,8 @@
 			fA.add(scan, 'angle', -90, 90, 1).name('scan angle');
 
 			const modes = { mode: engine.viewMode as ViewMode };
-			gui.add(modes, 'mode', { '[1] LIT': 1, '[2] DENSITY': 2, '[3] DEBUG': 3, '[4] IDS': 4 })
+			gui
+				.add(modes, 'mode', { '[1] LIT': 1, '[2] DENSITY': 2, '[3] DEBUG': 3, '[4] IDS': 4 })
 				.name('view mode')
 				.listen()
 				.onChange((m: ViewMode) => engine.setViewMode(Number(m) as ViewMode));
@@ -180,7 +225,6 @@
 			delete (window as unknown as { __hyv?: unknown }).__hyv;
 		};
 	});
-
 </script>
 
 <svelte:head>
@@ -190,16 +234,29 @@
 
 {#if DEV}
 	<section class="bench">
-		<p class="hud-text graphite top">/DEV/CROWD · ENGINE BENCH · DRAG TO SELECT · CLICK TO PING · [1–4] VIEW MODES</p>
-		<div class="hero" bind:this={heroEl} aria-hidden="true"></div>
+		<p class="hud-text graphite top">
+			/DEV/CROWD · ENGINE BENCH · DRAG TO SELECT · CLICK TO PING · [1–4] VIEW MODES
+		</p>
+		<div
+			class="hero"
+			bind:this={heroEl}
+			aria-hidden="true"
+			use:formation={{ id: 'hero-wide', source: HERO_WIDE }}
+		></div>
 		<p class="copy" use:collider={{ pad: 8 }}>
-			A paragraph registered as a collider. The crowd should flow around this block like water around a stone, and the
-			formation entities whose targets sit inside it keep their shape.
+			A paragraph registered as a collider. The crowd should flow around this block like water
+			around a stone, and the formation entities whose targets sit inside it keep their shape.
 		</p>
 		<div class="stage" bind:this={stageEl} aria-hidden="true"></div>
 		<p class="hud-text graphite readout">{noEngine ? 'NO ENGINE (STATIC BUILD)' : readout}</p>
-		<div class="tall"></div>
-		<p class="copy lower" use:collider={{ pad: 8 }}>Lower collider, to check page-space formations and scroll carry.</p>
+		<div
+			class="anchor"
+			aria-hidden="true"
+			use:formation={{ id: 'dev-anchor-ring', source: circle }}
+		></div>
+		<p class="copy lower" use:collider={{ pad: 8 }}>
+			Lower collider, to check page-space formations and scroll carry.
+		</p>
 	</section>
 	<span class="peon mono micro" bind:this={labelEl}>PEON #4471 (DISPENSABLE)</span>
 {/if}
@@ -245,6 +302,16 @@
 
 	.copy.lower {
 		top: 160vh;
+	}
+
+	/* Second scroll anchor: scrolling down blends hero-wide → this ring (GUI 'claimed' off). */
+	.anchor {
+		position: absolute;
+		left: 50vw;
+		top: 175vh;
+		width: 40vh;
+		aspect-ratio: 1;
+		outline: 1px dashed var(--hairline);
 	}
 
 	.readout {

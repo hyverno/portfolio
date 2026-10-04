@@ -23,6 +23,7 @@ uniform float uSpawn;
 uniform float uIds;
 uniform float uPanic;
 uniform float uPaintMix;
+uniform float uPaintLag;
 uniform vec3 uInk;
 uniform vec3 uSignal;
 uniform float uNamed[8];
@@ -55,7 +56,9 @@ void main() {
 	vec4 vel = texture(tVel, uv);
 	vec4 tgt = texture(tTarget, uv);
 
-	float m = entityMix(id);
+	// Paint follows a lagged mix: an entity takes its new formation's colour about when it lands,
+	// not when its target jumps (and gives it back about when it leaves, scrolling back).
+	float m = entityMixAt(id, uPaintLag);
 	vec4 pa = vec4(0.0);
 	vec4 pb = vec4(0.0);
 	vec4 qa = vec4(0.0);
@@ -80,9 +83,12 @@ void main() {
 	vColor = mix(vColor, uSignal, hot);
 	vColorAlt = mix(vColorAlt, uSignal, hot);
 
-	// [4] IDS: a colour per persistent id, stable through every formation.
+	// [4] IDS: a colour per persistent id, stable through every formation. The hue walks the
+	// Hilbert rank (3 turns of the wheel) with a little per-id jitter, so neighbours share a hue
+	// and every transition shows the mapping: bands stay bands.
 	if (uIds > 0.5) {
-		vColor = srgbToLinear(hsv2rgb(vec3(hash11(id * 0.31 + 0.7), 0.55, 0.85)));
+		float hue = fract(id / uCount * 3.0 + hash11(id * 0.31 + 0.7) * 0.1);
+		vColor = srgbToLinear(hsv2rgb(vec3(hue, 0.55, 0.85)));
 		vColorAlt = vColor;
 	}
 

@@ -7,6 +7,7 @@ import { BAYER } from '../glsl/bayer';
 
 export const INK_FRAG = /* glsl */ `
 uniform sampler2D uDensity;
+uniform float uNorm;
 uniform vec2 uResolution;
 uniform float uInkGain;
 uniform float uFloor;
@@ -20,7 +21,7 @@ void main() {
 		#include <colorspace_fragment>
 		return;
 	}
-	float d = texture2D(uDensity, gl_FragCoord.xy / uResolution).r;
+	float d = texture2D(uDensity, gl_FragCoord.xy / uResolution).r * uNorm;
 	float a = smoothstep(0.35, 0.6, d * uInkGain + uFloor * 0.6);
 	if (dither(a, gl_FragCoord.xy / uDitherPx) < 0.5) discard;
 	gl_FragColor = vec4(uInk, 1.0);

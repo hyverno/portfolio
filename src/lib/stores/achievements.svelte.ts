@@ -125,14 +125,18 @@ export function toast(m: {
 	loadAchievements();
 	if (ach.muted) return;
 	if (toastQueue.length >= QUEUE_MAX) toastQueue.shift();
-	toastQueue.push({
+	const msg: ToastMsg = {
 		id: nextId++,
 		kind: m.kind ?? 'info',
 		title: m.title,
 		body: m.body,
 		ach: m.ach,
 		count: m.count
-	});
+	};
+	// Trophies are earned in the moment: they jump ahead of pending status messages.
+	const firstInfo = msg.kind === 'info' ? -1 : toastQueue.findIndex((q) => q.kind === 'info');
+	if (firstInfo === -1) toastQueue.push(msg);
+	else toastQueue.splice(firstInfo, 0, msg);
 }
 
 export function takeToast(): ToastMsg | undefined {

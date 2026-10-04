@@ -5,10 +5,9 @@
 -->
 <script lang="ts">
 	import { stats } from '#lib/core/stats.svelte';
-	import { device } from '#lib/core/device.svelte';
 	import { fmtNum, t } from '#lib/i18n/index.svelte';
 	import { ACH_TOTAL, ach } from '#lib/stores/achievements.svelte';
-	import { chrome, entityCount } from './chrome.svelte';
+	import { chrome, entityCount, governorStep } from './chrome.svelte';
 	import Odometer from './Odometer.svelte';
 
 	let { sheet = false }: { sheet?: boolean } = $props();
@@ -20,11 +19,10 @@
 	);
 	const load = $derived(stats.frameMs / BUDGET_MS);
 	const level = $derived(load < 0.7 ? 'ok' : load < 1 ? 'warn' : 'over');
-	const governor = $derived(
-		device.governed
-			? t().hud.quality(t().settings.qualities[device.tier.toUpperCase() as 'LOW' | 'MED' | 'HIGH'])
-			: ''
-	);
+	const governor = $derived.by(() => {
+		const step = governorStep();
+		return step ? t().hud.quality(step) : '';
+	});
 	// Hidden from the HUD (not the sheet) only while there is nothing to report.
 	const numbers = $derived(
 		stats.numbersDrawn > 0 ? t().hud.numbersDrawn(fmtNum(stats.numbersDrawn)) : ''
@@ -132,8 +130,8 @@
 
 	.governor {
 		color: var(--ink);
-		padding: 1px 5px 0;
-		box-shadow: inset 2px 0 0 var(--debug-amber);
+		padding: 1px 0 0 5px;
+		border-left: 2px solid var(--debug-amber);
 	}
 
 	.sheet {

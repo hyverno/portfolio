@@ -24,7 +24,7 @@ void main() {
 	vec2 q = gl_PointCoord * 2.0 - 1.0;
 	float r2 = dot(q, q);
 	if (r2 > 1.0) discard;
-	gl_FragColor = vec4(uAmp * exp(-r2 * 3.0), 0.0, 0.0, 1.0);
+	gl_FragColor = vec4(uAmp * exp(-r2 * 4.0), 0.0, 0.0, 1.0);
 }
 `;
 const POINTS_VERT = /* glsl */ `
@@ -73,7 +73,13 @@ function texelGeometry(size: number): THREE.BufferGeometry {
 }
 
 function floatTexture(size: number): THREE.DataTexture {
-	const t = new THREE.DataTexture(new Float32Array(size * size * 4), size, size, THREE.RGBAFormat, THREE.FloatType);
+	const t = new THREE.DataTexture(
+		new Float32Array(size * size * 4),
+		size,
+		size,
+		THREE.RGBAFormat,
+		THREE.FloatType
+	);
 	t.minFilter = t.magFilter = THREE.NearestFilter;
 	t.needsUpdate = true;
 	return t;
@@ -90,9 +96,18 @@ export interface FakeCrowd {
 	dispose(): void;
 }
 
-export function createFakeCrowd(renderer: THREE.WebGLRenderer, simSize = 128, densitySize = 256): FakeCrowd {
+export function createFakeCrowd(
+	renderer: THREE.WebGLRenderer,
+	simSize = 128,
+	densitySize = 256
+): FakeCrowd {
 	const N = simSize * simSize;
-	const viewport = { w: innerWidth, h: innerHeight, dpr: renderer.getPixelRatio(), aspect: innerWidth / innerHeight };
+	const viewport = {
+		w: innerWidth,
+		h: innerHeight,
+		dpr: renderer.getPixelRatio(),
+		aspect: innerWidth / innerHeight
+	};
 
 	const posTex = floatTexture(simSize);
 	const velTex = floatTexture(simSize);
@@ -120,8 +135,13 @@ export function createFakeCrowd(renderer: THREE.WebGLRenderer, simSize = 128, de
 			let y: number;
 			if (k === 0) [x, y] = [-0.55 * a + Math.cos(th) * r * 0.22, 0.35 + Math.sin(th) * r * 0.22];
 			else if (k === 1) [x, y] = [0.5 * a + Math.cos(th) * r * 0.12, 0.5 + Math.sin(th) * r * 0.12];
-			else if (k === 2) [x, y] = [0.1 * a + Math.cos(th) * (0.34 + Math.random() * 0.03), -0.3 + Math.sin(th) * (0.34 + Math.random() * 0.03)];
-			else if (k === 3) [x, y] = [(Math.random() * 2 - 1) * a * 0.9, -0.82 + (Math.random() - 0.5) * 0.06];
+			else if (k === 2)
+				[x, y] = [
+					0.1 * a + Math.cos(th) * (0.34 + Math.random() * 0.03),
+					-0.3 + Math.sin(th) * (0.34 + Math.random() * 0.03)
+				];
+			else if (k === 3)
+				[x, y] = [(Math.random() * 2 - 1) * a * 0.9, -0.82 + (Math.random() - 0.5) * 0.06];
 			else [x, y] = [(Math.random() * 2 - 1) * a, Math.random() * 2 - 1];
 			t[i * 2] = x;
 			t[i * 2 + 1] = y;
@@ -184,7 +204,11 @@ export function createFakeCrowd(renderer: THREE.WebGLRenderer, simSize = 128, de
 		set(_p: Partial<CrowdParams>) {},
 		preset(_p: Preset) {},
 		ping(x, y) {
-			ping = { x: (x - viewport.w / 2) / (viewport.h / 2), y: -(y - viewport.h / 2) / (viewport.h / 2), t: time };
+			ping = {
+				x: (x - viewport.w / 2) / (viewport.h / 2),
+				y: -(y - viewport.h / 2) / (viewport.h / 2),
+				t: time
+			};
 		},
 		attract() {},
 		setScan() {},
@@ -204,10 +228,16 @@ export function createFakeCrowd(renderer: THREE.WebGLRenderer, simSize = 128, de
 		depthBuffer: false
 	});
 	const geometry = texelGeometry(simSize);
+	// Same splat as the engine's density pass (4 texels at 256, exp(-4r²)·.25), so values match.
 	const densityMat = new THREE.ShaderMaterial({
 		vertexShader: DENSITY_VERT,
 		fragmentShader: DENSITY_FRAG,
-		uniforms: { uPos: { value: posTex }, uAspect: { value: 1 }, uSplat: { value: 6 }, uAmp: { value: 0.07 } },
+		uniforms: {
+			uPos: { value: posTex },
+			uAspect: { value: 1 },
+			uSplat: { value: (4 * densitySize) / 256 },
+			uAmp: { value: 0.25 }
+		},
 		blending: THREE.AdditiveBlending,
 		transparent: true,
 		depthTest: false,
@@ -347,7 +377,6 @@ export function createFakeCrowd(renderer: THREE.WebGLRenderer, simSize = 128, de
 		velTex.needsUpdate = true;
 
 		densityMat.uniforms.uAspect.value = a;
-		densityMat.uniforms.uSplat.value = Math.max(2, (densitySize / viewport.h) * 14);
 		const prevTarget = renderer.getRenderTarget();
 		renderer.setRenderTarget(densityRT);
 		renderer.setClearColor(0x000000, 0);
