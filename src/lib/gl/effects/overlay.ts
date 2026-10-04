@@ -7,11 +7,23 @@ const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 const savedViewport = new THREE.Vector4();
 const size = new THREE.Vector2();
 
-/** One triangle covering clip space: (-1,-1), (3,-1), (-1,3). */
+let triangle: THREE.BufferGeometry | null = null;
+
+/** One triangle covering clip space: (-1,-1), (3,-1), (-1,3). Shared, never disposed (36 bytes). */
 export function fullscreenTriangle(): THREE.BufferGeometry {
-	const g = new THREE.BufferGeometry();
-	g.setAttribute('position', new THREE.Float32BufferAttribute([-1, -1, 0, 3, -1, 0, -1, 3, 0], 3));
-	return g;
+	if (!triangle) {
+		triangle = new THREE.BufferGeometry();
+		triangle.setAttribute('position', new THREE.Float32BufferAttribute([-1, -1, 0, 3, -1, 0, -1, 3, 0], 3));
+	}
+	return triangle;
+}
+
+/** A mesh that covers the whole viewport with `material` (use FULLSCREEN_VERT as its vertex shader). */
+export function fullscreenMesh(material: THREE.Material, renderOrder = 0): THREE.Mesh {
+	const mesh = new THREE.Mesh(fullscreenTriangle(), material);
+	mesh.frustumCulled = false;
+	mesh.renderOrder = renderOrder;
+	return mesh;
 }
 
 /** Vertex shader for `fullscreenTriangle()`. */
@@ -52,6 +64,20 @@ export const COBALT_GLSL = /* glsl */ `
 vec3 cobaltFor(vec3 paperLinear) {
 	float lum = dot(paperLinear, vec3(0.2126, 0.7152, 0.0722));
 	return lum < 0.2 ? vec3(0.1047, 0.1714, 1.0) : vec3(0.0176, 0.0513, 1.0);
+}
+`;
+
+/**
+ * Screen-band mask shared by the view-mode passes: a pass only draws inside [uMask.x, uMask.y),
+ * measured top → bottom as a fraction of the canvas height. The mode-switch sweep moves the
+ * boundary between the outgoing and the incoming mode.
+ */
+export const MASK_GLSL = /* glsl */ `
+uniform vec2 uResolution;
+uniform vec2 uMask;
+float screenMask() {
+	float y = 1.0 - gl_FragCoord.y / uResolution.y;
+	return step(uMask.x, y) * (1.0 - step(uMask.y, y));
 }
 `;
 

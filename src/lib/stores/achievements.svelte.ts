@@ -114,12 +114,25 @@ export function isUnlocked(id: AchId): boolean {
 }
 
 /** Queues a toast (dropped while toasts are muted). */
-export function toast(m: { title: string; body?: string; kind?: ToastKind; ach?: AchId; count?: number }): void {
+export function toast(m: {
+	title: string;
+	body?: string;
+	kind?: ToastKind;
+	ach?: AchId;
+	count?: number;
+}): void {
 	if (typeof window === 'undefined') return;
 	loadAchievements();
 	if (ach.muted) return;
 	if (toastQueue.length >= QUEUE_MAX) toastQueue.shift();
-	toastQueue.push({ id: nextId++, kind: m.kind ?? 'info', title: m.title, body: m.body, ach: m.ach, count: m.count });
+	toastQueue.push({
+		id: nextId++,
+		kind: m.kind ?? 'info',
+		title: m.title,
+		body: m.body,
+		ach: m.ach,
+		count: m.count
+	});
 }
 
 export function takeToast(): ToastMsg | undefined {
@@ -135,7 +148,13 @@ export function unlock(id: AchId): void {
 	persist();
 	sfx('ach');
 	const { title, line } = achText(id);
-	toast({ kind: id === 'dev-mode' ? 'ultra' : 'ach', title, body: line, ach: id, count: ach.unlocked.length });
+	toast({
+		kind: id === 'dev-mode' ? 'ultra' : 'ach',
+		title,
+		body: line,
+		ach: id,
+		count: ach.unlocked.length
+	});
 }
 
 /** Records progress (e.g. Cheeks Full 3/12) and unlocks when `value >= max`. */

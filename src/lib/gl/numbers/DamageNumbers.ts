@@ -1,7 +1,7 @@
 // GPU damage numbers (§S3): a ring buffer of instanced quads. Spawning writes one slot and marks
 // it dirty; dirty slots are uploaded once per task with addUpdateRange (never a full re-upload).
 import * as THREE from 'three';
-import type { CreateDamageNumbers } from '../internal';
+import type { CreateDamageNumbers, Effect } from '../internal';
 import type { DamageNumbers, GLView } from '../types';
 import { OVERLAY_MATERIAL, drawOverlay } from '../effects/overlay';
 import { acquireAtlas, releaseAtlas } from './atlas';
@@ -57,7 +57,17 @@ function rollValue(): number {
 	return Math.round(8 + Math.random() ** 2 * 480);
 }
 
-export const createDamageNumbers: CreateDamageNumbers = (renderer, o) => {
+/** DamageNumbers plus the engine Effect hooks, and a tunable glyph size. */
+export type DamageNumbersFx = DamageNumbers &
+	Effect & {
+		/** Font size of a number in CSS px (default 22; crits draw at ×1.6). */
+		size: number;
+	};
+
+export function createDamageNumbersImpl(
+	_renderer: THREE.WebGLRenderer,
+	o: { capacity: number; view?: GLView }
+): DamageNumbersFx {
 	const capacity = Math.max(1, Math.floor(o.capacity));
 	const view: GLView | undefined = o.view;
 	const epoch = performance.now();
@@ -311,12 +321,6 @@ export const createDamageNumbers: CreateDamageNumbers = (renderer, o) => {
 			releaseAtlas();
 		}
 	};
-};
+}
 
-/** Unused by the factory; kept so `renderer` is part of the signature without lint noise. */
-export type { CreateDamageNumbers };
-void THREE;
-void (null as unknown as typeof createDamageNumbers extends CreateDamageNumbers ? true : never);
-void (null as unknown as THREE.WebGLRenderer | undefined);
-void (0 as unknown as typeof renderer);
-declare const renderer: unknown;
+export const createDamageNumbers: CreateDamageNumbers = createDamageNumbersImpl;

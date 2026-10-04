@@ -11,6 +11,12 @@ export interface Box {
 	h: number;
 }
 
+export interface Tracker {
+	/** Re-measures now (e.g. after an inner scroll container moved the element). */
+	measure(): void;
+	stop(): void;
+}
+
 const SETTLE_MS = 140;
 
 /** True when the element (or an ancestor) is fixed or sticky, so it does not move with the page. */
@@ -22,8 +28,12 @@ function pinned(el: HTMLElement): boolean {
 	return false;
 }
 
-export function trackRect(el: HTMLElement, cb: (box: Box) => void): () => void {
-	let base = { x: 0, y: 0, w: 0, h: 0 };
+export function expand(b: Box, pad: number): Box {
+	return { x: b.x - pad, y: b.y - pad, w: b.w + pad * 2, h: b.h + pad * 2 };
+}
+
+export function trackRect(el: HTMLElement, cb: (box: Box) => void): Tracker {
+	let base: Box = { x: 0, y: 0, w: 0, h: 0 };
 	let baseY = 0;
 	let fixed = false;
 	let lastY = Number.NaN;
@@ -57,10 +67,13 @@ export function trackRect(el: HTMLElement, cb: (box: Box) => void): () => void {
 	window.addEventListener('resize', measure);
 	measure();
 
-	return () => {
-		offFrame();
-		clearTimeout(settle);
-		ro.disconnect();
-		window.removeEventListener('resize', measure);
+	return {
+		measure,
+		stop() {
+			offFrame();
+			clearTimeout(settle);
+			ro.disconnect();
+			window.removeEventListener('resize', measure);
+		}
 	};
 }
