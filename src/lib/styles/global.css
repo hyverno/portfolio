@@ -1,0 +1,336 @@
+@import './tokens.css';
+
+/* Lets headings march their width with a plain CSS transition / GSAP tween of `--wdth`. */
+@property --wdth {
+	syntax: '<number>';
+	inherits: true;
+	initial-value: 100;
+}
+
+/* ── Reset ─────────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+* {
+	margin: 0;
+}
+
+html {
+	-webkit-text-size-adjust: none;
+	text-size-adjust: none;
+	hanging-punctuation: first last;
+}
+
+body {
+	min-height: 100svh;
+	background: var(--paper);
+	color: var(--ink);
+	font-family: var(--font-sans);
+	font-size: var(--fs-body);
+	line-height: var(--lh-body);
+	font-weight: 400;
+	font-synthesis: none;
+	font-kerning: normal;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	overflow-x: clip;
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+	display: block;
+	max-width: 100%;
+}
+
+input,
+button,
+textarea,
+select {
+	font: inherit;
+	color: inherit;
+}
+
+button {
+	background: none;
+	border: 0;
+	padding: 0;
+	cursor: pointer;
+	letter-spacing: inherit;
+}
+
+ul[role='list'],
+ol[role='list'] {
+	list-style: none;
+	padding: 0;
+}
+
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	overflow-wrap: break-word;
+}
+
+:where(p) {
+	max-width: var(--measure);
+	text-wrap: pretty;
+}
+
+:where(h1, h2, h3, h4) {
+	text-wrap: balance;
+}
+
+#content {
+	position: relative;
+	z-index: var(--z-content);
+}
+
+/* ── Type ──────────────────────────────────────────────────────────── */
+:where(h1, h2, h3, .t-mega, .t-display, .t-h1, .t-h2, .t-h3) {
+	font-family: var(--font-sans);
+	font-stretch: calc(var(--wdth) * 1%);
+}
+
+@supports not (font-stretch: 62%) {
+	:where(h1, h2, h3, .t-mega, .t-display, .t-h1, .t-h2, .t-h3) {
+		font-variation-settings: 'wdth' var(--wdth);
+	}
+}
+
+.t-mega {
+	--wdth: var(--wdth-mega);
+	font-size: var(--fs-mega);
+	line-height: var(--lh-mega);
+	letter-spacing: var(--tr-mega);
+	font-weight: var(--fw-mega);
+}
+
+.t-display {
+	--wdth: var(--wdth-display);
+	font-size: var(--fs-display);
+	line-height: var(--lh-display);
+	letter-spacing: var(--tr-display);
+	font-weight: var(--fw-display);
+}
+
+:where(h1),
+.t-h1 {
+	--wdth: var(--wdth-h1);
+	font-size: var(--fs-h1);
+	line-height: var(--lh-h1);
+	letter-spacing: var(--tr-h1);
+	font-weight: var(--fw-h1);
+}
+
+:where(h2),
+.t-h2 {
+	--wdth: var(--wdth-h2);
+	font-size: var(--fs-h2);
+	line-height: var(--lh-h2);
+	font-weight: var(--fw-h2);
+}
+
+:where(h3),
+.t-h3 {
+	--wdth: var(--wdth-h3);
+	font-size: var(--fs-h3);
+	line-height: var(--lh-h3);
+	font-weight: var(--fw-h3);
+}
+
+.t-lede {
+	font-size: var(--fs-lede);
+	line-height: var(--lh-lede);
+	font-weight: var(--fw-lede);
+}
+
+.t-body {
+	font-size: var(--fs-body);
+	line-height: var(--lh-body);
+}
+
+.mono {
+	font-family: var(--font-mono);
+	font-variant-numeric: tabular-nums;
+	font-feature-settings: 'tnum' 1;
+}
+
+/* The one human word per headline: italic serif, signal text, ×1.05, never bold. */
+.serif {
+	font-family: var(--font-serif);
+	font-style: italic;
+	font-weight: 400;
+	font-stretch: 100%;
+	font-size: 1.05em;
+	letter-spacing: 0;
+	color: var(--signal-text);
+}
+
+.hud-text {
+	font-family: var(--font-mono);
+	font-size: var(--fs-hud);
+	line-height: var(--lh-hud);
+	letter-spacing: var(--tr-hud);
+	font-weight: var(--fw-hud);
+	font-stretch: calc(var(--wdth-hud) * 1%);
+	font-variant-numeric: tabular-nums;
+	text-transform: uppercase;
+}
+
+.micro {
+	font-family: var(--font-mono);
+	font-size: var(--fs-micro);
+	line-height: 1.3;
+	letter-spacing: var(--tr-micro);
+	font-weight: var(--fw-micro);
+	font-variant-numeric: tabular-nums;
+	text-transform: uppercase;
+}
+
+.graphite {
+	color: var(--graphite);
+}
+
+/* ── Layout ────────────────────────────────────────────────────────── */
+.wrap {
+	width: 100%;
+	max-width: var(--max-w);
+	margin-inline: auto;
+	padding-inline: var(--margin);
+}
+
+.grid {
+	display: grid;
+	grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+	column-gap: var(--gutter);
+}
+
+.section {
+	position: relative;
+	padding-block: var(--section-pad);
+}
+
+.visually-hidden {
+	position: absolute !important;
+	width: 1px !important;
+	height: 1px !important;
+	padding: 0 !important;
+	margin: -1px !important;
+	overflow: hidden !important;
+	clip-path: inset(50%) !important;
+	white-space: nowrap !important;
+	border: 0 !important;
+}
+
+/* ── Brackets: the house shape (§2.5). Four 10px corners, 1.5px, offset 4px. ── */
+.brackets {
+	position: relative;
+}
+
+.brackets::before {
+	--c: var(--bracket-color, currentColor);
+	--l: var(--bracket);
+	--w: var(--bracket-w);
+	content: '';
+	position: absolute;
+	inset: calc(var(--bracket-offset) * -1);
+	pointer-events: none;
+	background:
+		linear-gradient(var(--c) 0 0) 0 0 / var(--l) var(--w) no-repeat,
+		linear-gradient(var(--c) 0 0) 0 0 / var(--w) var(--l) no-repeat,
+		linear-gradient(var(--c) 0 0) 100% 0 / var(--l) var(--w) no-repeat,
+		linear-gradient(var(--c) 0 0) 100% 0 / var(--w) var(--l) no-repeat,
+		linear-gradient(var(--c) 0 0) 0 100% / var(--l) var(--w) no-repeat,
+		linear-gradient(var(--c) 0 0) 0 100% / var(--w) var(--l) no-repeat,
+		linear-gradient(var(--c) 0 0) 100% 100% / var(--l) var(--w) no-repeat,
+		linear-gradient(var(--c) 0 0) 100% 100% / var(--w) var(--l) no-repeat;
+}
+
+/* ── Links: a row of 2px dots; marching ants on hover (§3.6) ───────── */
+a {
+	color: inherit;
+	text-decoration: none;
+}
+
+:where(p, li, dd, figcaption, .prose) a,
+.link {
+	color: var(--signal-text);
+	padding-bottom: 0.18em;
+	background-image: radial-gradient(circle at 1px 1px, currentColor 1px, transparent 1.25px);
+	background-size: 5px 2px;
+	background-repeat: repeat-x;
+	background-position: 0 100%;
+	-webkit-box-decoration-break: clone;
+	box-decoration-break: clone;
+}
+
+:where(p, li, dd, figcaption, .prose) a:hover,
+.link:hover {
+	animation: ants 400ms linear infinite;
+}
+
+@keyframes ants {
+	to {
+		background-position: 5px 100%;
+	}
+}
+
+/* ── Focus: cobalt, never removed. The A4 bracket component can take over via html.focus-brackets. ── */
+:focus-visible {
+	outline: var(--bracket-w) solid var(--debug-cobalt);
+	outline-offset: var(--bracket-offset);
+}
+
+html.focus-brackets :focus-visible {
+	outline-color: transparent;
+}
+
+::selection {
+	background: var(--signal);
+	color: #111110;
+}
+
+/* ── No JS: sections render in their own palette ───────────────────── */
+html:not(.js) [data-theme] {
+	background: var(--paper);
+	color: var(--ink);
+}
+
+/* ── Static build hooks (§7 No WebGL) ──────────────────────────────── */
+html.no-webgl .gl,
+html.no-webgl .gl-only {
+	display: none !important;
+}
+
+/* Shown only once the engine is known to be missing (or JS is off). */
+html.js:not(.no-webgl) .static-only {
+	display: none !important;
+}
+
+/* ── Reduced motion: OS setting unless the user forced FULL, or the ⚙ override ── */
+html.reduced-motion *,
+html.reduced-motion *::before,
+html.reduced-motion *::after {
+	animation-duration: 0.01ms !important;
+	animation-iteration-count: 1 !important;
+	scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	html:not(.motion-full) *,
+	html:not(.motion-full) *::before,
+	html:not(.motion-full) *::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		scroll-behavior: auto !important;
+	}
+}

@@ -1,7 +1,13 @@
 {
 	"extends": "$app/tsconfig",
 	"compilerOptions": {
-		"strict": true
+		"strict": true,
+		// package.json "imports" patterns do no extension probing in TypeScript, so `#lib/x` (no
+		// extension, as Vite resolves it) is mirrored here as a path mapping.
+		"paths": {
+			"#lib": ["./src/lib/index.ts"],
+			"#lib/*": ["./src/lib/*"]
+		}
 	},
 	"include": ["src", "vite.config.ts"]
 }

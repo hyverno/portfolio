@@ -1,0 +1,240 @@
+/* HEADCOUNT design tokens (DESIGN.md §2–§3). The six theme tokens are overwritten inline on <html>
+   by the theme engine (core/theme.svelte.ts); the [data-theme] blocks below are the CSS fallback. */
+
+:root {
+	color-scheme: light;
+
+	/* ── Palette: theme `paper` (§2.1) ─────────────────────────────── */
+	--paper: #ece9e1;
+	--ink: #111110;
+	--graphite: #5f5e58;
+	--hairline: #d2cec3;
+	--signal: #ff4a1c; /* graphics only */
+	--signal-text: #b8310d;
+
+	/* Debug set: Debug view, lab gizmos, focus brackets, 404 */
+	--debug-cobalt: #2440ff;
+	--debug-lime: #b8ff3d;
+	--debug-amber: #ffb020;
+	--missing: #ff00ff;
+
+	/* Chapter-local palettes (inside project visuals only) */
+	--earth-sage: #8fa98b;
+	--earth-ochre: #d9a441;
+	--ice-sky: #a9d6f5;
+	--ice-prussian: #22406b;
+	--ice-glint: #ffffff;
+	--rongeur-cream: #fff3e2;
+	--rongeur-brown: #2b1b12;
+	--rongeur-apricot: #f2894b;
+
+	/* ── Type (§2.2) ───────────────────────────────────────────────── */
+	--font-sans:
+		'Archivo Variable', 'Archivo', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+		'Helvetica Neue', Arial, sans-serif;
+	--font-mono:
+		'Martian Mono Variable', ui-monospace, 'SFMono-Regular', 'Cascadia Mono', Menlo, Consolas,
+		monospace;
+	--font-serif: 'Instrument Serif', 'Iowan Old Style', 'Times New Roman', Georgia, serif;
+
+	--fs-mega: clamp(4.5rem, 1rem + 15vw, 18rem);
+	--lh-mega: 0.82;
+	--tr-mega: -0.02em;
+	--fw-mega: 900;
+	--wdth-mega: 125;
+
+	--fs-display: clamp(3rem, 1.2rem + 7vw, 9rem);
+	--lh-display: 0.88;
+	--tr-display: -0.015em;
+	--fw-display: 800;
+	--wdth-display: 70;
+
+	--fs-h1: clamp(2.25rem, 1.3rem + 3.8vw, 5.25rem);
+	--lh-h1: 0.95;
+	--tr-h1: -0.01em;
+	--fw-h1: 750;
+	--wdth-h1: 80;
+
+	--fs-h2: clamp(1.625rem, 1.2rem + 1.9vw, 3rem);
+	--lh-h2: 1.05;
+	--tr-h2: 0;
+	--fw-h2: 650;
+	--wdth-h2: 88;
+
+	--fs-h3: clamp(1.25rem, 1.1rem + 0.6vw, 1.625rem);
+	--lh-h3: 1.2;
+	--tr-h3: 0;
+	--fw-h3: 600;
+	--wdth-h3: 100;
+
+	--fs-lede: clamp(1.125rem, 1rem + 0.55vw, 1.5rem);
+	--lh-lede: 1.4;
+	--fw-lede: 400;
+
+	--fs-body: clamp(1rem, 0.96rem + 0.18vw, 1.125rem);
+	--lh-body: 1.55;
+	--measure: 62ch;
+
+	--fs-hud: clamp(0.6875rem, 0.66rem + 0.12vw, 0.8125rem);
+	--lh-hud: 1.3;
+	--tr-hud: 0.06em;
+	--fw-hud: 450;
+	--wdth-hud: 87.5;
+
+	--fs-micro: 0.625rem;
+	--tr-micro: 0.08em;
+	--fw-micro: 400;
+
+	/* ── Grid & space (§2.3) ───────────────────────────────────────── */
+	--cols: 4;
+	--margin: clamp(16px, 4vw, 64px);
+	--gutter: clamp(12px, 1.6vw, 24px);
+	--max-w: 1680px;
+	--baseline: 8px;
+	--section-pad: clamp(96px, 14vh, 200px);
+	--world-cell: 64px;
+	--frame-inset: 8px;
+	--bracket: 10px;
+	--bracket-w: 1.5px;
+	--bracket-offset: 4px;
+
+	--s-1: 8px;
+	--s-2: 16px;
+	--s-3: 24px;
+	--s-4: 32px;
+	--s-5: 40px;
+	--s-6: 48px;
+	--s-8: 64px;
+	--s-10: 80px;
+	--s-12: 96px;
+	--s-16: 128px;
+
+	/* ── Motion (§3.2–§3.3) ────────────────────────────────────────── */
+	--t-ack: 60ms;
+	--t-micro: 120ms;
+	--t-fast: 240ms;
+	--t-base: 480ms;
+	--t-reveal: 720ms;
+	--t-morph: 1400ms;
+	--t-page: 1000ms;
+
+	--ease-steer: cubic-bezier(0.18, 0.9, 0.32, 1);
+	--ease-arrive: cubic-bezier(0.7, 0, 0.2, 1);
+	--ease-spawn: cubic-bezier(0.3, 1.6, 0.55, 1);
+	--ease-despawn: cubic-bezier(0.6, 0, 0.9, 0.4);
+	--ease-snap: cubic-bezier(0.9, 0, 0.1, 1);
+
+	/* ── Z-index (§2.7) ────────────────────────────────────────────── */
+	--z-bg: 0;
+	--z-world: 5;
+	--z-content: 10;
+	--z-gl: 20;
+	--z-debug: 30;
+	--z-hud: 40;
+	--z-cursor: 50;
+	--z-toast: 60;
+	--z-ink: 70;
+	--z-preloader: 80;
+	--z-top: 100;
+
+	/* ── Texture (§2.4) ────────────────────────────────────────────── */
+	--grain-opacity: 0.05;
+	--grain-blend: multiply;
+}
+
+@media (min-width: 640px) {
+	:root {
+		--cols: 8;
+		--frame-inset: 12px;
+	}
+}
+
+@media (min-width: 1024px) {
+	:root {
+		--cols: 12;
+	}
+}
+
+/* ── Themes (§2.1). `:root[data-theme]` is set by setTheme; the section-level selectors only
+      apply without JS (html lacks `.js`), so sections render in their own palette statically. ── */
+
+:root[data-theme='paper'],
+html:not(.js) [data-theme='paper'] {
+	--paper: #ece9e1;
+	--ink: #111110;
+	--graphite: #5f5e58;
+	--hairline: #d2cec3;
+	--signal: #ff4a1c;
+	--signal-text: #b8310d;
+}
+
+:root[data-theme='viewport'],
+html:not(.js) [data-theme='viewport'] {
+	--paper: #0f1110;
+	--ink: #ece9e1;
+	--graphite: #8c8b84;
+	--hairline: #262826;
+	--signal: #ff5a2e;
+	--signal-text: #ff7a55;
+}
+
+:root[data-theme='ink'],
+html:not(.js) [data-theme='ink'] {
+	--paper: #111110;
+	--ink: #ece9e1;
+	--graphite: #8c8b84;
+	--hairline: #2a2a27;
+	--signal: #ff4a1c;
+	--signal-text: #ff7a55;
+}
+
+:root[data-theme='earth'],
+html:not(.js) [data-theme='earth'] {
+	--paper: #e6e4d8;
+	--ink: #14160f;
+	--graphite: #5a5d4f;
+	--hairline: #cfcdbe;
+	--signal: #ff4a1c;
+	--signal-text: #b8310d;
+}
+
+:root[data-theme='ice'],
+html:not(.js) [data-theme='ice'] {
+	--paper: #e4ecf0;
+	--ink: #0f1b2a;
+	--graphite: #4c5d6e;
+	--hairline: #c8d5dd;
+	--signal: #ff4a1c;
+	--signal-text: #b8310d;
+}
+
+:root[data-theme='aida'],
+html:not(.js) [data-theme='aida'] {
+	--paper: #f3efe6;
+	--ink: #1b1b1b;
+	--graphite: #5f5a50;
+	--hairline: #ddd6c6;
+	--signal: #b7332c;
+	--signal-text: #9e2a24;
+}
+
+:root[data-theme='rongeur'],
+html:not(.js) [data-theme='rongeur'] {
+	--paper: #fff3e2;
+	--ink: #2b1b12;
+	--graphite: #6e5444;
+	--hairline: #ebd9c1;
+	--signal: #f2894b;
+	--signal-text: #a4471a;
+}
+
+/* Dark papers: light cobalt, screen grain, dark form controls. */
+:root[data-theme='viewport'],
+:root[data-theme='ink'],
+html:not(.js) [data-theme='viewport'],
+html:not(.js) [data-theme='ink'] {
+	color-scheme: dark;
+	--debug-cobalt: #5b73ff;
+	--grain-opacity: 0.07;
+	--grain-blend: screen;
+}
