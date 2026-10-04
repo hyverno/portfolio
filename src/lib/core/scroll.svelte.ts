@@ -77,8 +77,13 @@ export function initScroll(): () => void {
 	let alive = true;
 	document.fonts?.ready.then(() => alive && ScrollTrigger.refresh());
 
+	// Dev hook for scripts/shot.mjs: scrolling through Lenis keeps it in sync with the page.
+	const w = window as unknown as { __hyvScrollTo?: typeof scrollTo };
+	if (import.meta.env.DEV) w.__hyvScrollTo = scrollTo;
+
 	return () => {
 		alive = false;
+		if (w.__hyvScrollTo === scrollTo) delete w.__hyvScrollTo;
 		offFrame();
 		offMotion();
 		ro.disconnect();

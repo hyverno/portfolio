@@ -137,6 +137,8 @@ export interface DamageNumbers {
 	readonly capacity: number;
 	/** THREE.Mesh */
 	readonly object: unknown;
+	/** Frees the pool; pools made with `Engine.createNumbers` must be disposed by their owner. */
+	dispose(): void;
 }
 
 /** A scissored sub-view rendered by the shared renderer inside `el`'s viewport rect. */

@@ -1,7 +1,7 @@
 // Shared state between the chrome components (preloader → HUD handoff, #1,445 odometer).
 import { TIER, device } from '#lib/core/device.svelte';
 import { stats } from '#lib/core/stats.svelte';
-import { t } from '#lib/i18n/index.svelte';
+import { i18n, t } from '#lib/i18n/index.svelte';
 
 export const chrome = $state({
 	/** HUD pieces are on screen (entrance played). */
@@ -27,7 +27,14 @@ export function governorStep(): string {
 	if (!device.governed || !stats.governorNote) return '';
 	const step = stats.governorNote.replace(/^DYNAMIC QUALITY:\s*/i, '').trim();
 	const q = t().settings.qualities as Record<string, string>;
-	return q[step] ?? step;
+	if (q[step]) return q[step];
+	if (i18n.lang !== 'fr') return step;
+	// The engine names its steps in English; the HUD speaks the visitor's language.
+	return step
+		.replace(/^DENSITY (\d+)$/, 'DENSITÉ $1')
+		.replace(/ ENT DRAWN$/, ' ENT. AFFICHÉES')
+		.replace(/^GRAIN OFF$/, 'GRAIN COUPÉ')
+		.replace(/^DPR (\d)\.(\d)$/, 'DPR $1,$2');
 }
 
 export const pad = (n: number, width: number) =>

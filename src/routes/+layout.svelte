@@ -85,6 +85,8 @@
 		setEngine(engine);
 		if (engine) {
 			device.webgl = 'ok';
+			// Dev hook for scripts/shot.mjs and scripts/tour.mjs (owner, blend, alpha diagnostics).
+			if (import.meta.env.DEV) (window as unknown as { __hyv?: { engine: Engine } }).__hyv = { engine };
 			return;
 		}
 		markNoWebGL();
@@ -134,7 +136,8 @@
 </script>
 
 <svelte:head>
-	<link rel="icon" href={favicon} />
+	<link rel="icon" href={favicon} type="image/svg+xml" />
+	<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 	<link rel="preload" as="font" type="font/woff2" href={archivoLatinUrl} crossorigin="anonymous" />
 	{#if !page.error}
 		<link rel="alternate" hreflang="en" href={absoluteUrl(page.url.pathname, 'en')} />

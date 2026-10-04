@@ -177,6 +177,7 @@ export const sideProjects: SideProject[] = [
 		title: 'Stixiva',
 		status: { en: 'PUBLIC BETA', fr: 'BÊTA PUBLIQUE' },
 		stack: ['PixiJS WebGL', 'Tauri/Rust core', 'React/TypeScript', 'PDF export'],
+		stackFr: ['PixiJS WebGL', 'cœur Tauri/Rust', 'React/TypeScript', 'export PDF'],
 		line: {
 			en: 'Any image in. A stitchable pattern out.',
 			fr: 'Une image en entrée. Une grille à broder en sortie.'
@@ -194,6 +195,7 @@ export const sideProjects: SideProject[] = [
 		/** TODO(Hyverno): status chip (e.g. live / beta); hidden while empty. */
 		status: { en: '', fr: '' },
 		stack: ['SvelteKit', 'Drizzle', 'Official merchant APIs & feeds'],
+		stackFr: ['SvelteKit', 'Drizzle', 'API et flux marchands officiels'],
 		line: {
 			en: 'Pépite reads the official feeds so you don’t overpay.',
 			fr: 'Pépite épluche les flux officiels pour que vous ne payiez jamais trop.'
@@ -552,4 +554,9 @@ export function isGame(p: Game | SideProject): p is Game {
 export function nextProject(slug: string): Game | SideProject {
 	const i = projects.findIndex((p) => p.slug === slug);
 	return projects[(i + 1) % projects.length];
+}
+
+/** A side project's stack in the visitor's language (product names stay as they are). */
+export function stackOf(p: SideProject, lang: 'en' | 'fr'): string[] {
+	return lang === 'fr' && p.stackFr ? p.stackFr : p.stack;
 }

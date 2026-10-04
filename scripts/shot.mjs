@@ -17,13 +17,14 @@
 //   --nowebgl   disable WebGL (tests the static build)
 //   --dark      emulate prefers-color-scheme: dark
 //   --eval      JS expression evaluated after load; its JSON result is printed
+//   --evalAfter JS expression evaluated after the last screenshot (state at the final scroll)
 //   --click     "x,y" click at viewport coords after load (repeatable via ;)
 //   --keys      keys to press after load, e.g. "3" or "ArrowUp,ArrowUp,b,a"
 //   --out       output prefix (default shots/shot); writes <out>-<i>.png and <out>-console.json
 //   --url       use an already-running server instead of starting one (e.g. http://localhost:4173)
 import { chromium } from 'playwright';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { dirname, join } from 'node:path';
 
 const args = process.argv.slice(2);
 const opt = (name, dflt) => {
@@ -47,6 +48,7 @@ const settle = Number(opt('settle', 1200));
 const out = String(opt('out', 'shots/shot'));
 const selector = opt('selector', null);
 const evalExpr = opt('eval', null);
+const evalAfterExpr = opt('evalAfter', null);
 const clicks = opt('click', null);
 const keys = opt('keys', null);
 const reduced = opt('reduced', false) === true;
@@ -57,12 +59,18 @@ let base = opt('url', null);
 mkdirSync(dirname(out) || '.', { recursive: true });
 
 let server = null;
+let viteCache = null;
 if (!base) {
 	const { createServer } = await import('vite');
+	const { mkdtempSync } = await import('node:fs');
+	const { tmpdir } = await import('node:os');
 	server = await createServer({
 		configFile: 'vite.config.ts',
+		// Private dep cache per run: parallel runs never clobber each other's optimised deps.
+		cacheDir: (viteCache = mkdtempSync(join(tmpdir(), 'hyv-vite-'))),
 		logLevel: 'error',
-		server: { port: 0, strictPort: false, host: '127.0.0.1' }
+		// No watcher / HMR: files edited mid-capture must not reload the page under the camera.
+		server: { port: 0, strictPort: false, host: '127.0.0.1', hmr: false, watch: null }
 	});
 	await server.listen();
 	const addr = server.httpServer.address();
@@ -88,13 +96,27 @@ page.on('console', (m) => logs.push({ type: m.type(), text: m.text().slice(0, 20
 page.on('pageerror', (e) => logs.push({ type: 'pageerror', text: String(e.stack || e).slice(0, 4000) }));
 page.on('requestfailed', (r) => logs.push({ type: 'requestfailed', text: `${r.url()} ${r.failure()?.errorText}` }));
 
+// A cold dep cache makes Vite reload the page once or twice while it optimises: count main-frame
+// navigations and only start once the page has stayed put for the whole wait.
+let navigations = 0;
+page.on('framenavigated', (f) => {
+	if (f === page.mainFrame()) navigations++;
+});
+
 const t0 = Date.now();
 try {
 	await page.goto(base + path, { waitUntil: 'load', timeout: 120000 });
 } catch (e) {
 	logs.push({ type: 'goto-error', text: String(e) });
 }
-await page.waitForTimeout(wait);
+for (let attempt = 0; attempt < 4; attempt++) {
+	const before = navigations;
+	await page.waitForTimeout(wait);
+	if (navigations === before) break;
+	await page.waitForLoadState('load').catch(() => {});
+	// errors logged by the discarded page are noise
+	logs.length = 0;
+}
 
 if (clicks) {
 	for (const c of String(clicks).split(';')) {
@@ -120,34 +142,60 @@ if (evalExpr) {
 	}
 }
 
+// Scrolls through the app's own scrollTo (Lenis-aware, dev only) when present, else natively.
+async function scrollPage(target) {
+	const usedApp = await page.evaluate((t) => {
+		const fn = window.__hyvScrollTo;
+		if (fn) {
+			fn(t, { immediate: true });
+			return true;
+		}
+		if (typeof t === 'number') window.scrollTo(0, t);
+		else document.querySelector(t)?.scrollIntoView({ block: 'start' });
+		return false;
+	}, target);
+	// Without the app hook, nudge so smooth-scroll libraries and ScrollTrigger notice the jump.
+	if (!usedApp) await page.mouse.wheel(0, 1);
+}
+
 const files = [];
 let i = 0;
 for (const s of scrolls) {
-	if (s.startsWith('#')) {
-		await page.evaluate((id) => document.querySelector(id)?.scrollIntoView({ block: 'start' }), s);
-	} else {
-		await page.evaluate((y) => window.scrollTo(0, y), Number(s));
-	}
-	// wheel nudge so smooth-scroll libraries and ScrollTrigger notice the jump
-	await page.mouse.wheel(0, 1);
+	await scrollPage(s.startsWith('#') ? s : Number(s));
 	await page.waitForTimeout(settle);
 	const f = `${out}-${i++}.png`;
 	await page.screenshot({ path: f });
 	files.push(f);
 }
 if (selector) {
-	await page.evaluate((sel) => document.querySelector(sel)?.scrollIntoView({ block: 'start' }), selector);
-	await page.mouse.wheel(0, 1);
+	await scrollPage(String(selector));
 	await page.waitForTimeout(settle);
 	const f = `${out}-${i++}.png`;
 	await page.screenshot({ path: f });
 	files.push(f);
 }
 
+let evalAfter;
+if (evalAfterExpr) {
+	try {
+		evalAfter = await page.evaluate(`(async () => (${evalAfterExpr}))()`);
+	} catch (e) {
+		evalAfter = `EVAL ERROR: ${e}`;
+	}
+}
+
 const errors = logs.filter((l) => ['error', 'pageerror', 'goto-error', 'requestfailed'].includes(l.type));
 writeFileSync(`${out}-console.json`, JSON.stringify({ path, ms: Date.now() - t0, evalResult, errors, logs }, null, 2));
-console.log(JSON.stringify({ screenshots: files, errors: errors.length, evalResult, firstErrors: errors.slice(0, 8) }, null, 2));
+console.log(JSON.stringify({ screenshots: files, errors: errors.length, evalResult, evalAfter, firstErrors: errors.slice(0, 8) }, null, 2));
 
 await browser.close();
 if (server) await server.close();
+if (viteCache) {
+	const { rmSync } = await import('node:fs');
+	try {
+		rmSync(viteCache, { recursive: true, force: true });
+	} catch {
+		// a locked file in the temp dir is harmless
+	}
+}
 process.exit(0);

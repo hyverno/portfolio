@@ -693,9 +693,10 @@ export class Crowd implements CrowdApi {
 		const md = (this.mix >= 0.5 ? U.uMatB.value : U.uMatA.value) as THREE.Matrix4;
 		this.panicCenter.set(md.elements[12], md.elements[13]);
 
-		// Scroll carry; a jump (anchor link, immediate scrollTo) is not inertia.
+		// Scroll carry. A jump (anchor link, restored scroll, immediate scrollTo) is not a scroll: the
+		// crowd jumps with the camera and re-forms on screen, instead of being left pages away.
 		const jump = Math.abs(scrollDelta) > vh * 0.8;
-		U.uScrollShift.value = (scrollDelta / half) * (jump ? 1 : p.scrollCarry);
+		U.uScrollShift.value = jump ? 0 : (scrollDelta / half) * p.scrollCarry;
 
 		U.uObstacleCount.value = packColliders(U.uObstacles.value as Float32Array, vp.w, vh, scrollY);
 
@@ -804,8 +805,11 @@ export class Crowd implements CrowdApi {
 		this.U.uCount.value = N2;
 		list.forEach((f, i) => {
 			const b = baked[i];
-			if (b) this.upload(f, b);
-			else {
+			if (b) {
+				this.upload(f, b);
+				// Same contract as a normal bake: listeners re-apply anything layered on top (setPaint).
+				for (const fn of this.bakeListeners) fn(f.id, b.ms);
+			} else {
 				f.ready = false;
 				this.bakeFormation(f);
 			}
@@ -934,7 +938,9 @@ export class Crowd implements CrowdApi {
 		} else {
 			out.set(sx, 0, 0, cx, 0, sy, 0, cy, 0, 0, 1, 0, 0, 0, 0, 1);
 		}
-		return f.region.space === 'page' && !f.ref.viewport ? 1 : 0;
+		// Bodies ride the scroll only when their region does: not in fixed space, not while pinned.
+		if (f.region.space !== 'page' || f.ref.viewport) return 0;
+		return this.regions.pinned(f.ref, scrollY) ? 0 : 1;
 	}
 
 	private blank8Tex: THREE.DataTexture | null = null;

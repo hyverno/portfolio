@@ -10,6 +10,8 @@ interface Collider {
 	top: number;
 	width: number;
 	height: number;
+	/** The pin holding this collider in place, if it sits inside a pinned section. */
+	pin: ScrollTrigger | null;
 	/** Scratch: distance to the viewport for the current pack. */
 	d: number;
 }
@@ -21,10 +23,20 @@ let scratch: Collider[] = [];
 let ro: ResizeObserver | null = null;
 let raf = 0;
 
+/** Px the pin has held the collider in place at `scrollY` (same model as gl/crowd/regions.ts). */
+function pinShift(c: Collider, scrollY: number): number {
+	const st = c.pin;
+	if (!st) return 0;
+	return Math.min(Math.max(scrollY - st.start, 0), Math.max(0, st.end - st.start));
+}
+
 function measure(c: Collider) {
 	const r = c.el.getBoundingClientRect();
+	const sy = window.scrollY;
+	c.pin = ScrollTrigger.getAll().find((st) => !!st.pin && st.pin.contains(c.el)) ?? null;
 	c.left = r.left + window.scrollX;
-	c.top = r.top + window.scrollY;
+	// Stored un-pinned: the pack adds the pin's hold back per frame.
+	c.top = r.top + sy - pinShift(c, sy);
 	c.width = r.width;
 	c.height = r.height;
 }
@@ -44,10 +56,16 @@ function ensureObservers() {
 	registerMotion();
 	ro = new ResizeObserver((records) => {
 		for (const r of records) {
+			// The page height changed (content above moved): re-measure everything once.
+			if (r.target === document.body) {
+				scheduleRefresh();
+				continue;
+			}
 			const c = colliders.get(r.target as HTMLElement);
 			if (c) measure(c);
 		}
 	});
+	ro.observe(document.body);
 	window.addEventListener('resize', scheduleRefresh);
 	ScrollTrigger.addEventListener('refresh', refreshColliders);
 	document.fonts?.ready.then(scheduleRefresh);
@@ -57,7 +75,7 @@ function ensureObservers() {
 export function registerCollider(el: HTMLElement, pad = 0): () => void {
 	if (typeof window === 'undefined') return () => {};
 	ensureObservers();
-	const c: Collider = { el, pad, left: 0, top: 0, width: 0, height: 0, d: 0 };
+	const c: Collider = { el, pad, left: 0, top: 0, width: 0, height: 0, pin: null, d: 0 };
 	measure(c);
 	colliders.set(el, c);
 	scratch = [...colliders.values()];
@@ -82,7 +100,7 @@ export function packColliders(out: Float32Array, vw: number, vh: number, scrollY
 			c.d = Infinity;
 			continue;
 		}
-		const top = c.top - scrollY;
+		const top = c.top + pinShift(c, scrollY) - scrollY;
 		const bottom = top + c.height;
 		// 0 while intersecting; otherwise the vertical gap to the viewport.
 		c.d = bottom < 0 ? -bottom : top > vh ? top - vh : 0;
@@ -94,9 +112,11 @@ export function packColliders(out: Float32Array, vw: number, vh: number, scrollY
 	let n = 0;
 	for (let i = 0; i < list.length && n < max; i++) {
 		const c = list[i];
-		if (c.d === Infinity) continue;
+		// Only copy that is on screen: entities parked just outside the viewport (the position
+		// clamp) must never sit inside an off-screen box, or its push pins them there for good.
+		if (c.d !== 0) continue;
 		const cx = c.left + c.width / 2;
-		const cy = c.top - scrollY + c.height / 2;
+		const cy = c.top + pinShift(c, scrollY) - scrollY + c.height / 2;
 		const o = n * 4;
 		out[o] = (cx - vw / 2) / half;
 		out[o + 1] = -(cy - half) / half;

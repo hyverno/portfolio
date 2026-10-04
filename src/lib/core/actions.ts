@@ -6,6 +6,7 @@ import { registerCollider } from './colliders';
 import { onKey } from './keys';
 import { hud } from './stats.svelte';
 import { getLocked, setLocked } from './lock.svelte';
+import { onLangChange } from '#lib/i18n/index.svelte';
 
 export { getLocked, setLocked };
 
@@ -69,8 +70,17 @@ export function reveal(node: HTMLElement, o: RevealParams = {}): ActionReturn<Re
 		p.mode === 'fade'
 			? revealFade(node, p)
 			: revealSplit(node, p.mode ?? 'lines', { scrub: p.scrub, delay: p.delay, widthMarch: p.widthMarch });
+	// SplitText rebuilds the node from an HTML string, so Svelte's own text nodes end up detached and
+	// keep receiving updates off-DOM. On a language switch, put Svelte's (already updated) nodes
+	// back and split again: in-place EN ⇄ FR then works for every revealed element.
+	const svelteNodes = [...node.childNodes];
 	let opts = o;
 	let cleanup = run(opts);
+	const offLang = onLangChange(() => {
+		cleanup();
+		node.replaceChildren(...svelteNodes);
+		cleanup = run(opts);
+	});
 	return {
 		update(next = {}) {
 			if (same(next, opts)) return;
@@ -79,6 +89,7 @@ export function reveal(node: HTMLElement, o: RevealParams = {}): ActionReturn<Re
 			cleanup = run(opts);
 		},
 		destroy() {
+			offLang();
 			cleanup();
 		}
 	};

@@ -224,6 +224,8 @@ export async function initEngine(canvas: HTMLCanvasElement): Promise<Engine | nu
 		})
 	);
 	const extraNumbers = new Set<NumbersFx>();
+	/** Pools living in a GLView: drawn by their view, but aged here every frame (HUD on-screen count). */
+	const viewNumbers = new Set<NumbersFx>();
 	const effects: Effect[] = [viewModes, numbers, ink];
 	const views = createViews(renderer, regions, handle.size);
 	const selection = createSelection(crowd);
@@ -266,11 +268,23 @@ export async function initEngine(canvas: HTMLCanvasElement): Promise<Engine | nu
 			const s = crowd.blendState;
 			if (disposed || crowd.owner !== null || s.from !== 'spawn' || s.to !== 'spawn') return;
 			const m = { v: 0 };
-			gsap.to(m, {
+			let wrote = false;
+			const spread = gsap.to(m, {
 				v: 1,
 				duration: 1.4,
 				ease: 'arrive',
-				onUpdate: () => crowd.blend('spawn', 'ambient', m.v)
+				onUpdate: () => {
+					// Stop as soon as anyone else drives the crowd (an anchor, a section, a claim):
+					// this fallback must never overwrite them.
+					const b = crowd.blendState;
+					const ours = wrote ? b.from === 'spawn' && b.to === 'ambient' : b.from === 'spawn' && b.to === 'spawn';
+					if (crowd.owner !== null || !ours) {
+						spread.kill();
+						return;
+					}
+					crowd.blend('spawn', 'ambient', m.v);
+					wrote = true;
+				}
 			});
 		});
 	});
@@ -312,6 +326,7 @@ export async function initEngine(canvas: HTMLCanvasElement): Promise<Engine | nu
 			if (fx === numbers) for (const extra of extraNumbers) extra.render(renderer);
 		}
 		views.render(time, dt, frame, scroll.y);
+		for (const n of viewNumbers) n.update?.(time, dt);
 		const now = performance.now();
 		renderAcc += now - t0;
 		acc++;
@@ -447,15 +462,14 @@ export async function initEngine(canvas: HTMLCanvasElement): Promise<Engine | nu
 				noopNumbers
 			);
 			// Overlay instances are drawn by the engine; view instances live in their view's scene.
-			if (!o.view) {
-				extraNumbers.add(n);
-				n.resize?.(handle.size.w, handle.size.h, handle.size.dpr);
-				const dispose = n.dispose.bind(n);
-				n.dispose = () => {
-					extraNumbers.delete(n);
-					dispose();
-				};
-			}
+			const pool = o.view ? viewNumbers : extraNumbers;
+			pool.add(n);
+			if (!o.view) n.resize?.(handle.size.w, handle.size.h, handle.size.dpr);
+			const dispose = n.dispose.bind(n);
+			n.dispose = () => {
+				pool.delete(n);
+				dispose();
+			};
 			return n;
 		},
 		get viewMode() {

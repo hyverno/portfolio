@@ -4,7 +4,7 @@
 // prerendering renders one route at a time, so the module-level state never leaks across pages.
 import { goto } from '$app/navigation';
 import { page } from '$app/state';
-import { tick } from 'svelte';
+import { tick, untrack } from 'svelte';
 import { currentSectionId, scrollTo } from '#lib/core/scroll.svelte';
 import { ScrollTrigger } from '#lib/core/motion';
 import { DICTS } from './dicts';
@@ -30,6 +30,25 @@ export function loc(l: L): string {
 
 export function otherLang(lang: Lang = i18n.lang): Lang {
 	return lang === 'en' ? 'fr' : 'en';
+}
+
+/**
+ * Calls `fn` after every language change, once the DOM shows the new language (not on subscribe).
+ * For code outside the component tree that owns DOM Svelte no longer updates (e.g. SplitText).
+ */
+export function onLangChange(fn: (lang: Lang) => void): () => void {
+	if (typeof window === 'undefined') return () => {};
+	let first = true;
+	return $effect.root(() => {
+		$effect(() => {
+			const lang = i18n.lang;
+			if (first) {
+				first = false;
+				return;
+			}
+			untrack(() => fn(lang));
+		});
+	});
 }
 
 /** `undefined` (the optional `[[lang=lang]]` segment absent) means English. Idempotent. */

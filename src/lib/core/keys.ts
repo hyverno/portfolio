@@ -27,8 +27,14 @@ let history: string[] = [];
 let historyMax = 0;
 let listening = false;
 
+/** Readable names for keys whose `KeyboardEvent.key` is not self-describing. */
+const ALIASES: Record<string, string> = { Space: ' ', Spacebar: ' ', Esc: 'Escape' };
+
 /** Single characters compare case-insensitively ('e' matches 'E'); named keys compare exactly. */
-const norm = (k: string) => (k.length === 1 ? k.toLowerCase() : k);
+const norm = (k: string) => {
+	const key = ALIASES[k] ?? k;
+	return key.length === 1 ? key.toLowerCase() : key;
+};
 
 export function isEditable(target: EventTarget | null): boolean {
 	if (!(target instanceof HTMLElement)) return false;

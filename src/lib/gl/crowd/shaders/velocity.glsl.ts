@@ -97,8 +97,13 @@ void main() {
 	bool homeBlocked = false;
 	float contact = 0.0;
 	vec2 contactN = vec2(0.0);
+	vec4 contactBox = vec4(0.0);
 	// Each entity keeps its own clearance (0.022–0.058u), so the copy gets a soft margin, not a fence.
 	float margin = 0.04 * mix(0.55, 1.45, hash11(id * 1.37 + 0.11));
+	// Anti-trap: a held entity that has all but stopped while still far from its slot is wedged
+	// (a concave corner between two blocks, a gap too narrow to take). Let it pass through the
+	// copy instead of queuing there for good; free movers are unaffected.
+	float stuck = step(0.05, w) * smoothstep(0.15, 0.4, dist) * (1.0 - smoothstep(0.04, 0.16, length(v) / max(uMaxSpeed, 1e-3)));
 	for (int i = 0; i < 16; i++) {
 		if (i >= uObstacleCount) break;
 		vec4 o = uObstacles[i];
@@ -112,11 +117,16 @@ void main() {
 			sdRoundBox(q + e.yx, o.zw, 0.02) - sdRoundBox(q - e.yx, o.zw, 0.02));
 		float gl = length(g);
 		vec2 n = gl > 1e-6 ? g / gl : vec2(0.0, 1.0);
-		float k = clamp(1.0 - sd / margin, 0.0, 3.0);
+		// A block nearly as wide as the screen leaves no way around (phones): it would dam the
+		// crowd. Entities travelling to a slot beyond it pass through; roamers still flow round.
+		float wide = smoothstep(0.75, 0.95, o.z / uAspect);
+		float soft = max(wide * step(0.05, w) * (1.0 - onSlot), stuck);
+		float k = clamp(1.0 - sd / margin, 0.0, 3.0) * (1.0 - 0.9 * soft);
 		ext += n * k * k * uObstacleF;
 		if (k > contact) {
 			contact = k;
 			contactN = n;
+			contactBox = o;
 		}
 	}
 
@@ -162,6 +172,15 @@ void main() {
 			vec2 tng = vec2(-contactN.y, contactN.x);
 			float along = dot(force, tng);
 			float side = abs(along) > 1e-3 ? sign(along) : (h > 0.5 ? 1.0 : -1.0);
+			// Never take the way round that ends at the screen edge (entities are held within
+			// ~0.15u of the frame, so a box flush with it is a dead end): go round the open side.
+			vec2 dir = tng * side;
+			bool horizontal = abs(dir.x) > abs(dir.y);
+			float lo = horizontal ? contactBox.x - contactBox.z + uAspect : contactBox.y - contactBox.w + 1.0;
+			float hi = horizontal ? uAspect - (contactBox.x + contactBox.z) : 1.0 - (contactBox.y + contactBox.w);
+			float ahead = (horizontal ? dir.x : dir.y) < 0.0 ? lo : hi;
+			float behind = (horizontal ? dir.x : dir.y) < 0.0 ? hi : lo;
+			if (ahead < 0.12 && behind > ahead) side = -side;
 			force += (contactN + tng * side) * (-into) * min(1.0, contact * 3.0);
 		}
 	}

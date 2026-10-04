@@ -141,6 +141,10 @@ export function revealSplit(el: HTMLElement, by: 'lines' | 'words', o: RevealOpt
 					if (!marching) widthMarches++;
 					marching = true;
 					el.style.contain = 'layout paint';
+					// Lines were split at the target width. While wider than that they must not wrap
+					// (the heading would grow taller and shift everything below, pins included):
+					// they stay on one row and their masks clip the overflow until the march lands.
+					const lines = s.lines;
 					tl.fromTo(
 						el,
 						{ '--wdth': 125 },
@@ -148,10 +152,14 @@ export function revealSplit(el: HTMLElement, by: 'lines' | 'words', o: RevealOpt
 							'--wdth': wdth,
 							duration: 1.1,
 							ease: EASE.steer,
+							// No wide pre-render before the reveal: the page lays out at the target width.
+							immediateRender: false,
+							onStart: () => void gsap.set(lines, { whiteSpace: 'nowrap' }),
 							onComplete: () => {
 								if (marching) widthMarches--;
 								marching = false;
 								el.style.removeProperty('contain');
+								gsap.set(lines, { clearProps: 'whiteSpace' });
 							}
 						},
 						0

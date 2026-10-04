@@ -54,6 +54,8 @@ export interface SideProject {
 	/** Status chip. Empty strings = hide the chip. */
 	status: L;
 	stack: string[];
+	/** French wording where a stack entry is a phrase rather than a product name. */
+	stackFr?: string[];
 	line: L;
 	/** Panels / paragraphs, in order. */
 	body: L[];

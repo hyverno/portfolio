@@ -27,5 +27,22 @@ export default defineConfig({
 	build: {
 		// three.js and the GL modules are split out and imported after first paint.
 		chunkSizeWarningLimit: 800
+	},
+	optimizeDeps: {
+		// Pre-bundle what the GL modules and lazy sections import, so the dev server never has to
+		// re-optimise (and reload the page) the first time a lazily imported scene is reached.
+		include: [
+			'three',
+			'three/addons/misc/GPUComputationRenderer.js',
+			'three/addons/utils/BufferGeometryUtils.js',
+			'three/addons/postprocessing/Pass.js',
+			'gsap',
+			'gsap/ScrollTrigger',
+			'gsap/SplitText',
+			'gsap/Flip',
+			'gsap/CustomEase',
+			'gsap/EasePack',
+			'lenis'
+		]
 	}
 });

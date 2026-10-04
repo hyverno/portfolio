@@ -1,6 +1,6 @@
 // Scissored sub-views (§7 "Lifecycle", Lab / planet): one shared renderer draws each GLView inside
 // its element's rect. Rects come from the region cache (pin-aware, no layout reads per frame);
-// an IntersectionObserver skips views that are off screen; rate 2 renders every other frame.
+// an IntersectionObserver skips views that are off screen; rate 2 updates every other frame.
 import * as THREE from 'three';
 import type { GLView } from './types';
 import type { RectPx, RegionRef, Regions } from './crowd/regions';
@@ -61,7 +61,6 @@ export function createViews(renderer: THREE.WebGLRenderer, regions: Regions, vie
 				const v = e.v;
 				e.pending += dt;
 				if (!e.visible || v.active === false) continue;
-				if (v.rate === 2 && frame % 2 === 1) continue;
 				regions.rect(e.ref, scrollY, rect);
 				if (rect.w < 1 || rect.h < 1 || rect.y + rect.h < 0 || rect.y > vh || rect.x + rect.w < 0 || rect.x > vw) continue;
 				if (rect.w !== e.w || rect.h !== e.h) {
@@ -69,8 +68,12 @@ export function createViews(renderer: THREE.WebGLRenderer, regions: Regions, vie
 					e.h = rect.h;
 					v.onResize?.(rect.w, rect.h);
 				}
-				v.update?.(time, e.pending);
-				e.pending = 0;
+				// The canvas is cleared every frame, so every visible view is drawn every frame; rate 2
+				// only halves how often it simulates (it gets the accumulated dt).
+				if (v.rate !== 2 || frame % 2 === 0) {
+					v.update?.(time, e.pending);
+					e.pending = 0;
+				}
 				const y = vh - rect.y - rect.h;
 				renderer.setViewport(rect.x, y, rect.w, rect.h);
 				renderer.setScissor(rect.x, y, rect.w, rect.h);

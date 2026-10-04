@@ -284,6 +284,9 @@ export function createDamageNumbersImpl(
 		spawn,
 		burst,
 		get live() {
+			// A view pool only ticks when its view renders: age it here too, so readers off screen
+			// never see a frozen count.
+			tick();
 			return liveCount;
 		},
 		get total() {

@@ -54,9 +54,15 @@ export class Regions {
 		registerMotion();
 		this.ro = new ResizeObserver((records) => {
 			for (const r of records) {
+				// The page got taller or shorter (content above a region changed): everything below moved.
+				if (r.target === document.body) {
+					this.scheduleAll();
+					continue;
+				}
 				for (const e of this.entries) if (e.el === r.target) this.measure(e, true);
 			}
 		});
+		this.ro.observe(document.body);
 		window.addEventListener('resize', this.scheduleAll);
 		ScrollTrigger.addEventListener('refresh', this.measureAll);
 		document.fonts?.ready.then(() => !this.disposed && this.scheduleAll());
@@ -90,7 +96,8 @@ export class Regions {
 		const e = ref as Entry;
 		if (--e.refs > 0) return;
 		this.entries = this.entries.filter((x) => x !== e);
-		if (!this.entries.some((x) => x.el === e.el)) this.ro.unobserve(e.el);
+		// Viewport regions (body / html) were never observed as regions; body stays observed for page height.
+		if (!e.viewport && !this.entries.some((x) => x.el === e.el)) this.ro.unobserve(e.el);
 		e.listeners.clear();
 	}
 
@@ -122,6 +129,12 @@ export class Regions {
 			out.h = e.h;
 		}
 		return out;
+	}
+
+	/** True while the region is held in place by an active pin (it does not move with the scroll). */
+	pinned(ref: RegionRef, scrollY: number): boolean {
+		const st = (ref as Entry).pin;
+		return !!st && scrollY > st.start && scrollY < st.end;
 	}
 
 	/** Re-measures everything (ScrollTrigger refresh: pins and layout above may have moved). */
