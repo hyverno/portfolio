@@ -43,12 +43,18 @@ Write only inside the files/folders you own. Never delete or rewrite someone els
 - **A3b GL effects**: `src/lib/gl/numbers/**`, `src/lib/gl/viewmodes.ts`, `src/lib/gl/inkswarm.ts`, `src/lib/gl/debugOverlay.ts`, `src/lib/gl/effects/**` (shaders/helpers).
 - **A4 chrome & UI**: `src/lib/ui/**`, `src/lib/stores/**`.
 
-**Stage 2 (sections, in parallel, after stage 1 is integrated)**
-- **A5**: `src/lib/sections/{Hero.svelte, Manifesto.svelte}`, `src/lib/sections/hero/**`, `src/lib/sections/ludogram/**`.
-- **A6**: `src/lib/sections/side-quests/{SideQuestsIntro.svelte, intro-formations.ts}`, `src/lib/sections/side-quests/planet/**`.
-- **A7**: `src/lib/sections/side-quests/stixiva/**`, `src/lib/sections/side-quests/rongeur/**`.
-- **A8**: `src/lib/sections/lab/**`, `src/lib/sections/{Contracts.svelte, PatchNotes.svelte, Loadout.svelte, Contact.svelte, Lobby.svelte, ContactFormations.ts, contracts-formations.ts, patch-formations.ts}`.
-- **A9**: `src/routes/[[lang=lang]]/projects/**`, `src/lib/sections/project/**`, SEO (`static/**`, OG image, sitemap, robots), 404 content inside `+error.svelte` only if A1 left a slot for it.
+**Stage 2 (sections, in parallel; read `docs/STAGE1.md` first)**
+- **S-hero**: `src/lib/sections/{Hero.svelte, Manifesto.svelte}`, `src/lib/sections/hero/**`, `src/lib/sections/manifesto/**`.
+- **S-ludo**: `src/lib/sections/ludogram/**`.
+- **S-planet**: `src/lib/sections/side-quests/{SideQuestsIntro.svelte, intro-formations.ts}`, `src/lib/sections/side-quests/planet/**`.
+- **S-craft**: `src/lib/sections/side-quests/stixiva/**`, `src/lib/sections/side-quests/rongeur/**`.
+- **S-lab**: `src/lib/sections/lab/**`.
+- **S-tail**: `src/lib/sections/{Contracts.svelte, PatchNotes.svelte, Loadout.svelte, Contact.svelte, Lobby.svelte}`, `src/lib/sections/tail/**` (formations/helpers for those).
+- Later: `src/routes/[[lang=lang]]/projects/**`, `src/lib/sections/project/**`, SEO (`static/**`, OG image).
+
+**Pin ordering (all pinned sections):** create the pin ScrollTrigger synchronously in `onMount` inside an `mm()`
+desktop branch (not after an `await`), with an explicit `refreshPriority` so pins refresh top-to-bottom:
+hero 50, ludogram 40, planet 30, stixiva 20. Non-pinned triggers keep the default (0).
 
 ## 4. Content rules (these override §6 microcopy where they conflict)
 - **OVHcloud**: name only, everywhere. Role cell `MISSION`, nothing else. No tooltip, description, alt text or stack.
