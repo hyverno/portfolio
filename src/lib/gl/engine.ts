@@ -132,37 +132,57 @@ export async function initEngine(canvas: HTMLCanvasElement): Promise<Engine | nu
 	crowd.blend('spawn', 'spawn', 0, { owner: BOOT_OWNER });
 	crowd.start();
 
-	// Compile every program for real (KHR_parallel_shader_compile when available), one by one so
-	// the log shows honest per-program timings.
+	// Compile every program for real, all at once: with KHR_parallel_shader_compile the driver builds
+	// them side by side (on Windows/ANGLE each crowd shader is ~1s of HLSL compilation, so one by one
+	// would add seconds to the boot). Each program is logged the moment it is actually ready.
 	const programs = crowd.programs();
-	const compileScene = new THREE.Scene();
 	const compileCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 	// Same attribute set as GPUComputationRenderer's full-screen triangle (no normals), or three
 	// would key a second program variant and compile it again on the first frame.
 	const quad = new THREE.BufferGeometry();
 	quad.setAttribute('position', new THREE.Float32BufferAttribute([-1, 3, 0, -1, -1, 0, 3, -1, 0], 3));
 	quad.setAttribute('uv', new THREE.Float32BufferAttribute([0, 2, 0, 0, 2, 0], 2));
-	for (let i = 0; i < programs.length; i++) {
-		const { name, material, kind, offscreen } = programs[i];
+	const offscreenScene = new THREE.Scene();
+	const onscreenScene = new THREE.Scene();
+	for (const { material, kind, offscreen } of programs) {
 		const obj =
 			kind === 'quad'
 				? new THREE.Mesh(quad, material)
 				: new THREE.Points(crowd.sim!.geometry, material);
 		obj.frustumCulled = false;
-		compileScene.add(obj);
-		// Offscreen passes write linear values: compile with a render target bound, like the frame.
-		renderer.setRenderTarget(offscreen ? crowd.sim!.target : null);
-		const t0 = performance.now();
-		try {
-			await renderer.compileAsync(compileScene, compileCam);
-		} catch {
-			renderer.compile(compileScene, compileCam);
-		}
-		log(L.compile(name, (performance.now() - t0).toFixed(1)));
-		compileScene.remove(obj);
-		report('compile', (i + 1) / programs.length);
+		(offscreen ? offscreenScene : onscreenScene).add(obj);
 	}
+	// compile() runs synchronously inside compileAsync, so each batch is keyed to the target bound
+	// at that moment: offscreen passes write linear values, exactly like the frame.
+	const kick = (scene: THREE.Scene, target: THREE.WebGLRenderTarget | null): Promise<unknown> => {
+		renderer.setRenderTarget(target);
+		try {
+			return renderer.compileAsync(scene, compileCam);
+		} catch {
+			renderer.compile(scene, compileCam);
+			return Promise.resolve();
+		}
+	};
+	const t0 = performance.now();
+	const compiled = Promise.all([kick(offscreenScene, crowd.sim!.target), kick(onscreenScene, null)]);
 	renderer.setRenderTarget(null);
+	const waiting = new Set(programs);
+	await new Promise<void>((resolve) => {
+		const poll = () => {
+			for (const p of waiting) {
+				const prog = (renderer.properties.get(p.material) as { currentProgram?: { isReady?: () => boolean } })
+					.currentProgram;
+				if (prog?.isReady && !prog.isReady()) continue;
+				waiting.delete(p);
+				log(L.compile(p.name, (performance.now() - t0).toFixed(1)));
+				report('compile', (programs.length - waiting.size) / programs.length);
+			}
+			if (waiting.size === 0) resolve();
+			else setTimeout(poll, 16);
+		};
+		poll();
+	});
+	await compiled.catch(() => {});
 	quad.dispose();
 	log(L.joke);
 
