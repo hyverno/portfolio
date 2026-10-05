@@ -10,4 +10,64 @@
 		<xhtml:link rel="alternate" hreflang="en" href="https://hyverno.com/" />
 		<xhtml:link rel="alternate" hreflang="fr" href="https://hyverno.com/fr" />
 	</url>
+	<url>
+		<loc>https://hyverno.com/projects/monsters-are-coming</loc>
+		<xhtml:link rel="alternate" hreflang="en" href="https://hyverno.com/projects/monsters-are-coming" />
+		<xhtml:link rel="alternate" hreflang="fr" href="https://hyverno.com/fr/projects/monsters-are-coming" />
+	</url>
+	<url>
+		<loc>https://hyverno.com/fr/projects/monsters-are-coming</loc>
+		<xhtml:link rel="alternate" hreflang="en" href="https://hyverno.com/projects/monsters-are-coming" />
+		<xhtml:link rel="alternate" hreflang="fr" href="https://hyverno.com/fr/projects/monsters-are-coming" />
+	</url>
+	<url>
+		<loc>https://hyverno.com/projects/tabletop-game-shop-simulator</loc>
+		<xhtml:link rel="alternate" hreflang="en" href="https://hyverno.com/projects/tabletop-game-shop-simulator" />
+		<xhtml:link rel="alternate" hreflang="fr" href="https://hyverno.com/fr/projects/tabletop-game-shop-simulator" />
+	</url>
+	<url>
+		<loc>https://hyverno.com/fr/projects/tabletop-game-shop-simulator</loc>
+		<xhtml:link rel="alternate" hreflang="en" href="https://hyverno.com/projects/tabletop-game-shop-simulator" />
+		<xhtml:link rel="alternate" hreflang="fr" href="https://hyverno.com/fr/projects/tabletop-game-shop-simulator" />
+	</url>
+	<url>
+		<loc>https://hyverno.com/projects/invokyr</loc>
+		<xhtml:link rel="alternate" hreflang="en" href="https://hyverno.com/projects/invokyr" />
+		<xhtml:link rel="alternate" hreflang="fr" href="https://hyverno.com/fr/projects/invokyr" />
+	</url>
+	<url>
+		<loc>https://hyverno.com/fr/projects/invokyr</loc>
+		<xhtml:link rel="alternate" hreflang="en" href="https://hyverno.com/projects/invokyr" />
+		<xhtml:link rel="alternate" hreflang="fr" href="https://hyverno.com/fr/projects/invokyr" />
+	</url>
+	<url>
+		<loc>https://hyverno.com/projects/crazy-planet-survivor</loc>
+		<xhtml:link rel="alternate" hreflang="en" href="https://hyverno.com/projects/crazy-planet-survivor" />
+		<xhtml:link rel="alternate" hreflang="fr" href="https://hyverno.com/fr/projects/crazy-planet-survivor" />
+	</url>
+	<url>
+		<loc>https://hyverno.com/fr/projects/crazy-planet-survivor</loc>
+		<xhtml:link rel="alternate" hreflang="en" href="https://hyverno.com/projects/crazy-planet-survivor" />
+		<xhtml:link rel="alternate" hreflang="fr" href="https://hyverno.com/fr/projects/crazy-planet-survivor" />
+	</url>
+	<url>
+		<loc>https://hyverno.com/projects/stixiva</loc>
+		<xhtml:link rel="alternate" hreflang="en" href="https://hyverno.com/projects/stixiva" />
+		<xhtml:link rel="alternate" hreflang="fr" href="https://hyverno.com/fr/projects/stixiva" />
+	</url>
+	<url>
+		<loc>https://hyverno.com/fr/projects/stixiva</loc>
+		<xhtml:link rel="alternate" hreflang="en" href="https://hyverno.com/projects/stixiva" />
+		<xhtml:link rel="alternate" hreflang="fr" href="https://hyverno.com/fr/projects/stixiva" />
+	</url>
+	<url>
+		<loc>https://hyverno.com/projects/le-rongeur</loc>
+		<xhtml:link rel="alternate" hreflang="en" href="https://hyverno.com/projects/le-rongeur" />
+		<xhtml:link rel="alternate" hreflang="fr" href="https://hyverno.com/fr/projects/le-rongeur" />
+	</url>
+	<url>
+		<loc>https://hyverno.com/fr/projects/le-rongeur</loc>
+		<xhtml:link rel="alternate" hreflang="en" href="https://hyverno.com/projects/le-rongeur" />
+		<xhtml:link rel="alternate" hreflang="fr" href="https://hyverno.com/fr/projects/le-rongeur" />
+	</url>
 </urlset>

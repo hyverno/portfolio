@@ -15,7 +15,7 @@
 	import { whenEngine } from '#lib/gl/handle';
 	import { formation, type FormationParams } from '#lib/gl/actions';
 	import type { Crowd, Engine } from '#lib/gl/types';
-	import { fmtNum, loc, t } from '#lib/i18n/index.svelte';
+	import { fmtNum, langHref, loc, t } from '#lib/i18n/index.svelte';
 	import { sideProjects } from '#lib/content/content';
 	import { progress as achProgress } from '#lib/stores/achievements.svelte';
 	import { sfx } from '#lib/ui/sfx';
@@ -460,6 +460,7 @@
 				<p class="t-lede line" use:wideCollider={{ pad: 6 }}>{loc(project.line)}</p>
 				<p class="chips-row">
 					<span class="status micro">{loc(project.status)}</span>
+					<a class="spec-link hud-text link" href={langHref(`/projects/${project.slug}`)}>{t().project.specSheet} →</a>
 				</p>
 			</header>
 
@@ -884,5 +885,11 @@
 			width: calc((100% - 2 * var(--margin) - 11 * var(--gutter)) / 12 * 8 + 7 * var(--gutter) + var(--margin));
 			margin: 0;
 		}
+	}
+
+	.spec-link {
+		display: inline-block;
+		margin-top: var(--s-1);
+		color: var(--ink);
 	}
 </style>

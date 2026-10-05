@@ -235,14 +235,24 @@
 			sessionClock = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 		}, 1000);
 
+		/** When the visitor reached the very end (0 = not there). */
+		let endSince = 0;
 		const setDespawn = (p: number) => {
 			const c = crowd;
 			const reduced = device.reducedMotion;
 			const q = reduced ? (p >= 0.5 ? 1 : 0) : p;
 			despawn = q;
 			if (q >= 0.995 && !completed) {
-				completed = true;
-				unlock('completionist');
+				// Reached = stayed at the end for a moment, on a page that has been up for a while:
+				// never a restored scroll sweeping past it mid-navigation.
+				const now = performance.now();
+				endSince ||= now;
+				if (now - endSince > 700 && now - startedAt > 1500) {
+					completed = true;
+					unlock('completionist');
+				}
+			} else if (q < 0.995) {
+				endSince = 0;
 			}
 			if (!c || traveling) return;
 			if (q > 0) {
@@ -287,7 +297,9 @@
 				const span = window.innerHeight * DESPAWN_VH;
 				const from = scroll.limit - span;
 				const p = scroll.limit > span ? Math.min(1, Math.max(0, (scroll.y - from) / span)) : 0;
-				if (Math.abs(p - last) < 1e-4) return;
+				// Unchanged: skip, except at the very end while Completionist is still pending (it
+				// needs a short dwell there, see setDespawn).
+				if (Math.abs(p - last) < 1e-4 && (completed || p < 0.995)) return;
 				last = p;
 				setDespawn(p);
 			}, PRIORITY.ui);

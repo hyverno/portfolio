@@ -77,7 +77,7 @@
 	import { RectCache, type Box } from './rect';
 
 	/** `/projects/[slug]` pages do not exist yet; flip once they do (a dead link breaks prerender). */
-	const SPEC_SHEETS = false;
+	const SPEC_SHEETS = true;
 
 	const OWNER = 'ludogram';
 	const IDS = ['ludo-city', 'ludo-shelves', 'ludo-d20'] as const;

@@ -16,7 +16,7 @@
 	import { formation } from '#lib/gl/actions';
 	import { whenEngine } from '#lib/gl/handle';
 	import type { Crowd, CrowdParams } from '#lib/gl/types';
-	import { fmtNum, i18n, loc, t } from '#lib/i18n/index.svelte';
+	import { fmtNum, i18n, langHref, loc, t } from '#lib/i18n/index.svelte';
 	import { formatNum } from '#lib/i18n/format';
 	import { sideProjects, stackOf } from '#lib/content/content';
 	import { unlock } from '#lib/stores/achievements.svelte';
@@ -520,6 +520,7 @@
 			<div class="intro">
 				<p class="lede">{loc(project.line)}</p>
 				<p class="stack micro">{stackOf(project, i18n.lang).join(' · ')}</p>
+				<a class="spec-link hud-text link" href={langHref(`/projects/${project.slug}`)}>{t().project.specSheet} →</a>
 				<p class="pro micro">{t().stixiva.pro}</p>
 				<p class="joke micro">{t().stixiva.joke}</p>
 			</div>
@@ -870,5 +871,11 @@
 		.title {
 			grid-column: 1 / -1;
 		}
+	}
+
+	.spec-link {
+		display: inline-block;
+		margin-top: var(--s-1);
+		color: var(--ink);
 	}
 </style>
